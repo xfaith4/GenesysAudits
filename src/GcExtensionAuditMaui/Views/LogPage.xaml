@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.LogPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:log="clr-namespace:GcExtensionAuditMaui.Models.Logging"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:LogViewModel"
+    Title="Log">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Open Out" Command="{Binding OpenOutCommand}" />
+            <Button Text="Open Log" Command="{Binding OpenLogCommand}" />
+            <Button Text="Copy Diagnostics" Command="{Binding CopyDiagnosticsCommand}" />
+            <Button Text="Clear View" Command="{Binding ClearViewCommand}" />
+            <HorizontalStackLayout Spacing="8">
+                <Switch IsToggled="{Binding AutoScroll}" />
+                <Label Text="Auto-scroll" VerticalTextAlignment="Center" />
+            </HorizontalStackLayout>
+        </HorizontalStackLayout>
+
+        <CollectionView x:Name="LogList" ItemsSource="{Binding Entries}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="log:LogEntry">
+                    <Grid ColumnDefinitions="140,70,*" Padding="4">
+                        <Label Grid.Column="0" Text="{Binding Timestamp, StringFormat='{0:HH:mm:ss.fff}'}" FontSize="12" TextColor="#6B7280" />
+                        <Label Grid.Column="1" Text="{Binding Level}" FontSize="12" />
+                        <Label Grid.Column="2" Text="{Binding Message}" FontSize="12" LineBreakMode="TailTruncation" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+</ContentPage>

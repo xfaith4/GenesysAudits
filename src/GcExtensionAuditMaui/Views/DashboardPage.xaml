@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.DashboardPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:GcExtensionAuditMaui.Views.Components"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DashboardViewModel"
+    Title="Genesys Cloud Extension Audit">
+
+    <Grid
+        Padding="{StaticResource Pad.Page}"
+        RowDefinitions="Auto,*,Auto"
+        ColumnDefinitions="7*,3*"
+        RowSpacing="{StaticResource Space.3}"
+        ColumnSpacing="{StaticResource Space.3}">
+
+        <components:AuditToolbarView Grid.Row="0" Grid.ColumnSpan="2" />
+
+        <components:ResultsPanelView Grid.Row="1" Grid.Column="0" />
+        <components:CommandPanelView Grid.Row="1" Grid.Column="1" />
+
+        <components:LogPanelView Grid.Row="2" Grid.ColumnSpan="2" />
+    </Grid>
+</ContentPage>
+

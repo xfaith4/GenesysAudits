@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="GcExtensionAuditMaui.Views.Components.LogPanelView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:logging="clr-namespace:GcExtensionAuditMaui.Models.Logging"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <Frame Style="{StaticResource PanelFrameStyle}" Padding="10">
+        <Grid RowDefinitions="Auto,Auto" RowSpacing="{StaticResource Space.2}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.2}">
+                <Button Text="Hide Logs"
+                        Command="{Binding ToggleLogExpandedCommand}"
+                        Style="{StaticResource SecondaryButtonStyle}">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsLogExpanded}" Value="False">
+                            <Setter Property="Text" Value="Show Logs" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <Label Grid.Column="1" Text="Diagnostics" Style="{StaticResource H2LabelStyle}" VerticalTextAlignment="Center" />
+
+                <Button Grid.Column="2" Text="Open Log" Command="{Binding OpenLogCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Grid.Column="3" Text="Clear" Command="{Binding ClearLogViewCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Grid.Column="4" Text="Copy Diagnostics" Command="{Binding CopyDiagnosticsCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+
+                <HorizontalStackLayout Grid.Column="5" Spacing="{StaticResource Space.2}" VerticalOptions="Center">
+                    <Switch IsToggled="{Binding AutoScrollLog}" />
+                    <Label Text="Auto-scroll" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </Grid>
+
+            <Grid Grid.Row="1" IsVisible="{Binding IsLogExpanded}">
+                <CollectionView x:Name="LogList" ItemsSource="{Binding LogEntries}" HeightRequest="160">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="logging:LogEntry">
+                            <Grid ColumnDefinitions="110,70,*" Padding="2">
+                                <Label Grid.Column="0" Text="{Binding Timestamp, StringFormat='{0:HH:mm:ss.fff}'}" Style="{StaticResource MonospaceLabelStyle}" />
+                                <Label Grid.Column="1" Text="{Binding Level}" Style="{StaticResource MonospaceLabelStyle}" />
+                                <Label Grid.Column="2" Text="{Binding Message}" Style="{StaticResource MonospaceLabelStyle}" LineBreakMode="TailTruncation" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Grid>
+    </Frame>
+</ContentView>

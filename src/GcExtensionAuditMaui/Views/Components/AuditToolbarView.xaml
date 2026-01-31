@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="GcExtensionAuditMaui.Views.Components.AuditToolbarView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <Frame Style="{StaticResource PanelFrameStyle}">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.3}" RowSpacing="{StaticResource Space.2}">
+            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                <Label Text="{Binding AuditTitle}" Style="{StaticResource H1LabelStyle}" />
+                <Label Text="{Binding ApiBaseUri}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+
+            <Frame Grid.Row="0" Grid.Column="1" Style="{StaticResource BadgeFrameStyle}" VerticalOptions="Start">
+                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                    <Label Text="{Binding StatusText}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- Command bar -->
+            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.3}">
+                <HorizontalStackLayout Grid.Column="0" Spacing="{StaticResource Space.2}">
+                    <Button Text="Build Context" Command="{Binding BuildContextCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Run Audit" Command="{Binding RunAuditCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Rebuild Plan" Command="{Binding RebuildPlanCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Grid.Column="1" Spacing="{StaticResource Space.2}" HorizontalOptions="End">
+                    <Frame Style="{StaticResource BadgeFrameStyle}" Padding="8,4" VerticalOptions="Center">
+                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                            <Label Text="Audit:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
+                            <RadioButton Content="Ext" GroupName="AuditKind" IsChecked="{Binding IsAuditExtensions}" />
+                            <RadioButton Content="DID" GroupName="AuditKind" IsChecked="{Binding IsAuditDids}" />
+                        </HorizontalStackLayout>
+                    </Frame>
+                    <Button Text="Export" Command="{Binding ExportAuditReportCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Open Out" Command="{Binding OpenOutCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                </HorizontalStackLayout>
+            </Grid>
+
+            <!-- Status strip -->
+            <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.3}">
+                <Label Grid.Column="0" Text="{Binding ContextSummaryText}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+                <Label Grid.Column="1" Text="{Binding AuditSummaryText}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" HorizontalTextAlignment="End" />
+            </Grid>
+        </Grid>
+    </Frame>
+</ContentView>

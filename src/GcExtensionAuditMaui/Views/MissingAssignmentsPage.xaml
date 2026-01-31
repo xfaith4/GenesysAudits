@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.MissingAssignmentsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:audit="clr-namespace:GcExtensionAuditMaui.Models.Audit"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:MissingAssignmentsViewModel"
+    Title="Missing">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Refresh Missing" Command="{Binding RefreshCommand}" />
+            <Button Text="Export CSV" Command="{Binding ExportCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </HorizontalStackLayout>
+
+        <Entry Text="{Binding FilterText}" Placeholder="Filter (extension/name/email/userId…)" />
+
+        <Label Text="{Binding SummaryText}" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <ScrollView Orientation="Horizontal">
+            <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="140,220,260,120,340" Padding="6" BackgroundColor="#F3F4F6">
+                    <Label Grid.Column="0" Text="Profile Extension" FontAttributes="Bold" />
+                    <Label Grid.Column="1" Text="User Name" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="Email" FontAttributes="Bold" />
+                    <Label Grid.Column="3" Text="State" FontAttributes="Bold" />
+                    <Label Grid.Column="4" Text="UserId" FontAttributes="Bold" />
+                </Grid>
+
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Rows}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="audit:MissingAssignmentRow">
+                            <Grid ColumnDefinitions="140,220,260,120,340" Padding="6">
+                                <Label Grid.Column="0" Text="{Binding ProfileExtension}" />
+                                <Label Grid.Column="1" Text="{Binding UserName}" />
+                                <Label Grid.Column="2" Text="{Binding UserEmail}" />
+                                <Label Grid.Column="3" Text="{Binding UserState}" />
+                                <Label Grid.Column="4" Text="{Binding UserId}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </VerticalStackLayout>
+</ContentPage>

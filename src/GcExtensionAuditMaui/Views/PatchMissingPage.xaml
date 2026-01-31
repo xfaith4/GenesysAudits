@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.PatchMissingPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:patch="clr-namespace:GcExtensionAuditMaui.Models.Patch"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:PatchMissingViewModel"
+    Title="Patch">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <Frame BorderColor="#E5E7EB" BackgroundColor="#F9FAFB" Padding="10">
+            <VerticalStackLayout Spacing="10">
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
+                        <Switch IsToggled="{Binding WhatIf}" />
+                        <Label Text="WhatIf" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <Label Grid.Row="0" Grid.Column="2" Text="Sleep (ms)" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="3" Text="{Binding SleepMsBetween}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Label Grid.Row="0" Grid.Column="4" Text="Max updates" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="5" Text="{Binding MaxUpdates}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Label Grid.Row="0" Grid.Column="6" Text="Max failures" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="7" Text="{Binding MaxFailures}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Button Grid.Row="0" Grid.Column="9" Text="Run Patch" Command="{Binding RunCommand}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Confirm" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="1" Grid.Column="1" Text="{Binding ConfirmText}" WidthRequest="140" />
+                    <Label Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7" Text="For real changes, uncheck WhatIf and type PATCH." FontSize="12" TextColor="#6B7280" VerticalTextAlignment="Center" />
+                    <Button Grid.Row="1" Grid.Column="9" Text="Preview" Command="{Binding PreviewCommand}" />
+                </Grid>
+
+                <Label Text="{Binding PreviewSummaryText}" FontSize="12" TextColor="#6B7280" LineBreakMode="WordWrap" />
+
+                <CollectionView ItemsSource="{Binding PreviewRows}" HeightRequest="120">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="patch:PatchPreviewRow">
+                            <Grid ColumnDefinitions="260,140,*" Padding="4">
+                                <Label Grid.Column="0" Text="{Binding User}" />
+                                <Label Grid.Column="1" Text="{Binding Extension}" />
+                                <Label Grid.Column="2" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </Frame>
+
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Cancel" Command="{Binding CancelCommand}" />
+            <Button Text="Open Out" Command="{Binding OpenOutCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding StatusText}" VerticalTextAlignment="Center" />
+        </HorizontalStackLayout>
+
+        <Editor Text="{Binding SummaryText}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="110" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <Label Text="Updated" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Updated}" HeightRequest="150">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchUpdatedRow">
+                    <Grid ColumnDefinitions="220,140,120,200" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding User}" />
+                        <Label Grid.Column="1" Text="{Binding Extension}" />
+                        <Label Grid.Column="2" Text="{Binding Status}" />
+                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Text="Skipped" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Skipped}" HeightRequest="150">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchSkippedRow">
+                    <Grid ColumnDefinitions="200,220,140,200" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding Reason}" />
+                        <Label Grid.Column="1" Text="{Binding User}" />
+                        <Label Grid.Column="2" Text="{Binding Extension}" />
+                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Text="Failed" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Failed}" HeightRequest="150">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchFailedRow">
+                    <Grid ColumnDefinitions="220,140,400" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding User}" />
+                        <Label Grid.Column="1" Text="{Binding Extension}" />
+                        <Label Grid.Column="2" Text="{Binding Error}" LineBreakMode="TailTruncation" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </VerticalStackLayout>
+</ContentPage>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.DiscrepanciesPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:audit="clr-namespace:GcExtensionAuditMaui.Models.Audit"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DiscrepanciesViewModel"
+    Title="Discrepancies">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Refresh Discrepancies" Command="{Binding RefreshCommand}" />
+            <Button Text="Export CSV" Command="{Binding ExportCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </HorizontalStackLayout>
+
+        <Entry Text="{Binding FilterText}" Placeholder="Filter (issue/extension/user/owner/extensionId…)" />
+
+        <Label Text="{Binding SummaryText}" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <ScrollView Orientation="Horizontal">
+            <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="150,140,220,240,140,220,340" Padding="6" BackgroundColor="#F3F4F6">
+                    <Label Grid.Column="0" Text="Issue" FontAttributes="Bold" />
+                    <Label Grid.Column="1" Text="Profile Extension" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="User Name" FontAttributes="Bold" />
+                    <Label Grid.Column="3" Text="Email" FontAttributes="Bold" />
+                    <Label Grid.Column="4" Text="Owner Type" FontAttributes="Bold" />
+                    <Label Grid.Column="5" Text="Owner Id" FontAttributes="Bold" />
+                    <Label Grid.Column="6" Text="Extension Id" FontAttributes="Bold" />
+                </Grid>
+
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Rows}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="audit:DiscrepancyRow">
+                            <Grid ColumnDefinitions="150,140,220,240,140,220,340" Padding="6">
+                                <Label Grid.Column="0" Text="{Binding Issue}" />
+                                <Label Grid.Column="1" Text="{Binding ProfileExtension}" />
+                                <Label Grid.Column="2" Text="{Binding UserName}" />
+                                <Label Grid.Column="3" Text="{Binding UserEmail}" />
+                                <Label Grid.Column="4" Text="{Binding ExtensionOwnerType}" />
+                                <Label Grid.Column="5" Text="{Binding ExtensionOwnerId}" />
+                                <Label Grid.Column="6" Text="{Binding ExtensionId}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </VerticalStackLayout>
+</ContentPage>

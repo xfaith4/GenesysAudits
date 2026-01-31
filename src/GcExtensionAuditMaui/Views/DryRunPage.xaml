@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.DryRunPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:audit="clr-namespace:GcExtensionAuditMaui.Models.Audit"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DryRunViewModel"
+    Title="Dry Run">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Generate Dry Run" Command="{Binding GenerateCommand}" />
+            <Button Text="Export CSVs" Command="{Binding ExportCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </HorizontalStackLayout>
+
+        <Entry Text="{Binding FilterText}" Placeholder="Filter (category/user/extension/notes…)" />
+
+        <Editor Text="{Binding SummaryText}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="90" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <ScrollView Orientation="Horizontal">
+            <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
+                <Grid Grid.Row="0" ColumnDefinitions="170,160,260,120,240,400,260" Padding="6" BackgroundColor="#F3F4F6">
+                    <Label Grid.Column="0" Text="Action" FontAttributes="Bold" />
+                    <Label Grid.Column="1" Text="Category" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="User" FontAttributes="Bold" />
+                    <Label Grid.Column="3" Text="Profile Extension" FontAttributes="Bold" />
+                    <Label Grid.Column="4" Text="Before Owner" FontAttributes="Bold" />
+                    <Label Grid.Column="5" Text="After / Expected" FontAttributes="Bold" />
+                    <Label Grid.Column="6" Text="Notes" FontAttributes="Bold" />
+                </Grid>
+
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Rows}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="audit:DryRunRow">
+                            <Grid ColumnDefinitions="170,160,260,120,240,400,260" Padding="6">
+                                <Label Grid.Column="0" Text="{Binding Action}" />
+                                <Label Grid.Column="1" Text="{Binding Category}" />
+                                <Label Grid.Column="2" Text="{Binding User}" />
+                                <Label Grid.Column="3" Text="{Binding ProfileExtension}" />
+                                <Label Grid.Column="4" Text="{Binding Before_ExtOwner}" />
+                                <Label Grid.Column="5" Text="{Binding After_Expected}" LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="6" Text="{Binding Notes}" LineBreakMode="TailTruncation" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </VerticalStackLayout>
+</ContentPage>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="GcExtensionAuditMaui.Views.Components.ResultsPanelView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:plan="clr-namespace:GcExtensionAuditMaui.Models.Planning"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <Frame Style="{StaticResource PanelFrameStyle}">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{StaticResource Space.2}">
+            <!-- Command surface for results -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Space.2}" RowDefinitions="Auto">
+                <Label Grid.Column="0" Text="Results" Style="{StaticResource H2LabelStyle}" VerticalOptions="Center" />
+
+                <Frame Grid.Column="1" Style="{StaticResource BadgeFrameStyle}" VerticalOptions="Center">
+                    <Label Text="{Binding PlanItemsCount}" Style="{StaticResource CaptionLabelStyle}" />
+                </Frame>
+
+                <Entry Grid.Column="2" Text="{Binding PlanFilterText}" Placeholder="Filter plan (user/ext/category/notes)..." />
+
+                <Frame Grid.Column="3" Style="{StaticResource SegmentContainerFrameStyle}" VerticalOptions="Center">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="0">
+                        <Button Text="All" Command="{Binding ShowAllCommand}" Style="{StaticResource SegmentButtonStyle}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding PlanFilterText}" Value="">
+                                    <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Color.Accent.Light}, Dark={StaticResource Color.Accent.Dark}}" />
+                                    <Setter Property="TextColor" Value="White" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                        <Button Grid.Column="1" Text="Missing" Command="{Binding ShowMissingCommand}" Style="{StaticResource SegmentButtonStyle}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding PlanFilterText}" Value="Missing">
+                                    <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Color.Accent.Light}, Dark={StaticResource Color.Accent.Dark}}" />
+                                    <Setter Property="TextColor" Value="White" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                        <Button Grid.Column="2" Text="Duplicates" Command="{Binding ShowDuplicatesCommand}" Style="{StaticResource SegmentButtonStyle}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding PlanFilterText}" Value="Duplicate">
+                                    <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Color.Accent.Light}, Dark={StaticResource Color.Accent.Dark}}" />
+                                    <Setter Property="TextColor" Value="White" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                        <Button Grid.Column="3" Text="Discrep." Command="{Binding ShowDiscrepanciesCommand}" Style="{StaticResource SegmentButtonStyle}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding PlanFilterText}" Value="Discrepancy">
+                                    <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Color.Accent.Light}, Dark={StaticResource Color.Accent.Dark}}" />
+                                    <Setter Property="TextColor" Value="White" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </Grid>
+                </Frame>
+            </Grid>
+
+            <!-- Table header -->
+            <Grid Grid.Row="1" ColumnDefinitions="100,*,90,140,110" Padding="{StaticResource Pad.Cell}"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource Color.TableHeaderBg.Light}, Dark={StaticResource Color.TableHeaderBg.Dark}}">
+                <Label Grid.Column="0" Text="Category" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="1" Text="User / Notes" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="2" Text="Current" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="3" Text="Action" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="4" Text="Target" Style="{StaticResource TableHeaderLabelStyle}" />
+            </Grid>
+
+            <!-- Results -->
+            <Grid Grid.Row="2">
+                <CollectionView
+                    ItemsSource="{Binding PlanItems}"
+                    SelectionMode="Single"
+                    SelectedItem="{Binding SelectedPlanItem}">
+                <CollectionView.EmptyView>
+                        <Frame Style="{StaticResource InsetFrameStyle}" VerticalOptions="Center" HorizontalOptions="Center">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="No results yet" Style="{StaticResource H2LabelStyle}" HorizontalTextAlignment="Center" />
+                                <Label Text="Build context, then click Run Audit to populate results." Style="{StaticResource CaptionLabelStyle}" HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Frame>
+                </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="plan:FixupItem">
+                            <Grid Padding="{StaticResource Pad.Cell}" ColumnDefinitions="100,*,90,140,110">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="Transparent" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Selected">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Color.RowSelectedBg.Light}, Dark={StaticResource Color.RowSelectedBg.Dark}}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+
+                                <Label Grid.Column="0" Text="{Binding Category}" Style="{StaticResource TableCellLabelStyle}" />
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="{Binding User}" Style="{StaticResource TableCellLabelStyle}" />
+                                    <Label Text="{Binding Notes}" Style="{StaticResource CaptionLabelStyle}" />
+                                </VerticalStackLayout>
+
+                                <Label Grid.Column="2" Text="{Binding CurrentExtension}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="3" Text="{Binding Action}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="4" Text="{Binding RecommendedExtension}" Style="{StaticResource TableCellLabelStyle}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Grid>
+    </Frame>
+</ContentView>

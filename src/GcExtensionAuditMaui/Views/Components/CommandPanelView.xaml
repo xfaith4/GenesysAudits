@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="GcExtensionAuditMaui.Views.Components.CommandPanelView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:plan="clr-namespace:GcExtensionAuditMaui.Models.Planning"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DashboardViewModel">
+
+    <Frame Style="{StaticResource PanelFrameStyle}">
+        <VerticalStackLayout Spacing="{StaticResource Space.2}">
+
+            <!-- Connection -->
+            <VerticalStackLayout Spacing="{StaticResource Space.2}">
+                <Label Text="Connection" Style="{StaticResource H2LabelStyle}" />
+
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Space.2}" RowSpacing="{StaticResource Space.2}">
+                    <Label Grid.Row="0" Grid.Column="0" Text="API" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="1" Text="{Binding ApiBaseUri}" Placeholder="https://api.usw2.pure.cloud" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Token" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.2}">
+                        <Entry Grid.Column="0" Text="{Binding AccessToken}" IsPassword="True" Placeholder="Bearer token" />
+                        <Button Grid.Column="1" Text="Paste" Command="{Binding PasteTokenCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                    </Grid>
+                </Grid>
+
+                <VerticalStackLayout Spacing="{StaticResource Space.1}">
+                    <HorizontalStackLayout Spacing="{StaticResource Space.2}">
+                        <Switch IsToggled="{Binding UseEnvToken}" />
+                        <Label Text="Use GC_ACCESS_TOKEN" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="{StaticResource Space.2}">
+                        <Switch IsToggled="{Binding IncludeInactive}" />
+                        <Label Text="Include inactive" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Command bar -->
+            <VerticalStackLayout Spacing="{StaticResource Space.2}">
+                <Label Text="Actions" Style="{StaticResource H2LabelStyle}" />
+
+                <Button Text="Run Audit" Command="{Binding RunAuditCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.2}" RowDefinitions="Auto,Auto" RowSpacing="{StaticResource Space.2}">
+                    <Button Text="Build Context" Command="{Binding BuildContextCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                    <Button Grid.Column="1" Text="Rebuild Plan" Command="{Binding RebuildPlanCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                    <Button Grid.Row="1" Text="Export Report" Command="{Binding ExportAuditReportCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                    <Button Grid.Row="1" Grid.Column="1" Text="Open Output" Command="{Binding OpenOutCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.2}">
+                    <Label Text="{Binding LastContextAt, StringFormat='Context: {0:G}'}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+                    <Label Grid.Column="1" Text="{Binding LastAuditAt, StringFormat='Audit: {0:G}'}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" HorizontalTextAlignment="End" />
+                </Grid>
+            </VerticalStackLayout>
+
+            <!-- Plan defaults -->
+            <VerticalStackLayout Spacing="{StaticResource Space.2}">
+                <Label Text="Plan Defaults" Style="{StaticResource H2LabelStyle}" />
+
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.2}" RowSpacing="{StaticResource Space.2}">
+                    <Label Grid.Row="0" Grid.Column="0" Text="Duplicates" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    <Picker Grid.Row="0" Grid.Column="1" ItemsSource="{Binding DuplicateDefaultOptions}" SelectedItem="{Binding DuplicateDefault}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Missing" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    <Picker Grid.Row="1" Grid.Column="1" ItemsSource="{Binding MissingDefaultOptions}" SelectedItem="{Binding MissingDefault}" />
+
+                    <Label Grid.Row="2" Grid.Column="0" Text="Discrep." Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    <Picker Grid.Row="2" Grid.Column="1" ItemsSource="{Binding DiscrepancyDefaultOptions}" SelectedItem="{Binding DiscrepancyDefault}" />
+                </Grid>
+
+                <HorizontalStackLayout Spacing="{StaticResource Space.2}">
+                    <Switch IsToggled="{Binding ReassertConsistentUsers}" />
+                    <Label Text="Also reassert consistent users (sync attempt)" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Row override editor -->
+            <Frame Style="{StaticResource InsetFrameStyle}" IsVisible="{Binding HasSelectedPlanItem}">
+                <VerticalStackLayout Spacing="{StaticResource Space.2}">
+                    <Label Text="Selected Row" Style="{StaticResource H2LabelStyle}" />
+                    <Label Text="{Binding SelectedPlanItem.User}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+                    <Label Text="{Binding SelectedPlanItem.Notes}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Space.2}" RowSpacing="{StaticResource Space.2}">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Action" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                        <Picker Grid.Row="0" Grid.Column="1" ItemsSource="{Binding FixupActionOptions}" SelectedItem="{Binding SelectedAction}" />
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="Target" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.2}">
+                            <Entry Grid.Column="0" Text="{Binding SelectedPlanItem.RecommendedExtension}" Placeholder="Required for AssignSpecific" />
+                            <Button Grid.Column="1" Text="Pick next" Command="{Binding PickNextAvailableCommand}" Style="{StaticResource SecondaryButtonStyle}" />
+                        </Grid>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Execute -->
+            <VerticalStackLayout Spacing="{StaticResource Space.2}">
+                <Label Text="Patch Execution" Style="{StaticResource H2LabelStyle}" />
+
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{StaticResource Space.2}" RowSpacing="{StaticResource Space.2}">
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="{StaticResource Space.2}">
+                        <Switch IsToggled="{Binding WhatIf}" />
+                        <Label Text="WhatIf" Style="{StaticResource CaptionLabelStyle}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                    <Entry Grid.Row="0" Grid.Column="1" Text="{Binding ConfirmText}" Placeholder="Confirm (PATCH)" />
+
+                    <Entry Grid.Row="1" Grid.Column="0" Text="{Binding SleepMsBetween}" Keyboard="Numeric" Placeholder="Sleep ms" />
+                    <Entry Grid.Row="1" Grid.Column="1" Text="{Binding MaxUpdates}" Keyboard="Numeric" Placeholder="Max updates" />
+                    <Entry Grid.Row="1" Grid.Column="2" Text="{Binding MaxFailures}" Keyboard="Numeric" Placeholder="Max failures" />
+                </Grid>
+
+                <Button Text="EXECUTE PATCH" Command="{Binding ExecuteCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+                <Label Text="{Binding LastOutputFolder}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </Frame>
+</ContentView>

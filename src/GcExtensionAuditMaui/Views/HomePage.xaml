@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.HomePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:ConnectionViewModel"
+    Title="Home">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="12" Spacing="12">
+
+            <Label Text="Extension Audit &amp; Repair" FontSize="20" FontAttributes="Bold" />
+
+            <Grid ColumnDefinitions="160,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                <Label Grid.Row="0" Grid.Column="0" Text="API Base URI" VerticalTextAlignment="Center" />
+                <Entry Grid.Row="0" Grid.Column="1" Text="{Binding ApiBaseUri}" Placeholder="https://api.usw2.pure.cloud" />
+                <Button Grid.Row="0" Grid.Column="2" Text="Build Context" Command="{Binding BuildContextCommand}" />
+
+                <Label Grid.Row="1" Grid.Column="0" Text="Access Token" VerticalTextAlignment="Center" />
+                <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <Entry Grid.Column="0" Text="{Binding AccessToken}" IsPassword="True" Placeholder="Bearer token" />
+                    <Button Grid.Column="1" Text="Paste" Command="{Binding PasteTokenCommand}" />
+                </Grid>
+                <Button Grid.Row="1" Grid.Column="2" Text="Cancel" Command="{Binding CancelCommand}" />
+            </Grid>
+
+            <HorizontalStackLayout Spacing="16">
+                <HorizontalStackLayout Spacing="8">
+                    <Switch IsToggled="{Binding UseEnvToken}" />
+                    <Label Text="Use GC_ACCESS_TOKEN from environment" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="16">
+                <HorizontalStackLayout Spacing="8">
+                    <Switch IsToggled="{Binding IncludeInactive}" />
+                    <Label Text="Include inactive users" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </HorizontalStackLayout>
+
+            <Frame BorderColor="#DADDE2" BackgroundColor="White" Padding="12">
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="10">
+                        <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                        <Label Text="{Binding StatusText}" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="Context Summary:" FontAttributes="Bold" />
+                    <Label Text="{Binding ContextSummaryText}" LineBreakMode="WordWrap" />
+
+                    <Label Text="API Stats:" FontAttributes="Bold" />
+                    <Label Text="{Binding ApiStatsText}" LineBreakMode="WordWrap" FontSize="12" TextColor="#6B7280" />
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

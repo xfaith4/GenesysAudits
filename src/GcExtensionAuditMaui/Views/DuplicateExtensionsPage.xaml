@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.DuplicateExtensionsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:audit="clr-namespace:GcExtensionAuditMaui.Models.Audit"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:DuplicateExtensionsViewModel"
+    Title="Dup Exts">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Refresh Extension Duplicates" Command="{Binding RefreshCommand}" />
+            <Button Text="Export CSV" Command="{Binding ExportCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </HorizontalStackLayout>
+
+        <Entry Text="{Binding FilterText}" Placeholder="Filter (number/owner/id/pool…)" />
+
+        <Label Text="{Binding SummaryText}" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <ScrollView Orientation="Horizontal">
+            <Grid RowDefinitions="Auto,*">
+                <Grid Grid.Row="0" ColumnDefinitions="170,140,220,220,340" Padding="6" BackgroundColor="#F3F4F6">
+                    <Label Grid.Column="0" Text="Extension Number" FontAttributes="Bold" />
+                    <Label Grid.Column="1" Text="Owner Type" FontAttributes="Bold" />
+                    <Label Grid.Column="2" Text="Owner Id" FontAttributes="Bold" />
+                    <Label Grid.Column="3" Text="Extension Pool Id" FontAttributes="Bold" />
+                    <Label Grid.Column="4" Text="Extension Id" FontAttributes="Bold" />
+                </Grid>
+
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Rows}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="audit:DuplicateExtensionRecordRow">
+                            <Grid ColumnDefinitions="170,140,220,220,340" Padding="6">
+                                <Label Grid.Column="0" Text="{Binding ExtensionNumber}" />
+                                <Label Grid.Column="1" Text="{Binding OwnerType}" />
+                                <Label Grid.Column="2" Text="{Binding OwnerId}" />
+                                <Label Grid.Column="3" Text="{Binding ExtensionPoolId}" />
+                                <Label Grid.Column="4" Text="{Binding ExtensionId}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </ScrollView>
+    </VerticalStackLayout>
+</ContentPage>
