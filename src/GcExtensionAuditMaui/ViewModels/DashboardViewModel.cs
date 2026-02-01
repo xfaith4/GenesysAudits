@@ -502,8 +502,8 @@ public sealed partial class DashboardViewModel : ObservableObject
                 apiBaseUri: ApiBaseUri,
                 accessToken: token,
                 includeInactive: IncludeInactive,
-                usersPageSize: 500,
-                extensionsPageSize: 100,
+                usersPageSize: AuditService.DefaultUsersPageSize,
+                extensionsPageSize: AuditService.DefaultExtensionsPageSize,
                 maxFullExtensionPages: 25,
                 progress: progress,
                 ct: _cts.Token);

@@ -438,7 +438,7 @@ function Get-GcUsersAll {
     [Parameter(Mandatory)] [string] $ApiBaseUri,
     [Parameter(Mandatory)] [string] $AccessToken,
     [Parameter()] [switch] $IncludeInactive,
-    [Parameter()] [int] $PageSize = 500
+    [Parameter()] [ValidateRange(1, 500)] [int] $PageSize = 500
   )
 
   Write-Log -Level INFO -Message "Fetching users (paged)" -Data @{ IncludeInactive = [bool]$IncludeInactive; PageSize = $PageSize }
@@ -492,7 +492,7 @@ function Get-GcExtensionsPage {
   param(
     [Parameter(Mandatory)] [string] $ApiBaseUri,
     [Parameter(Mandatory)] [string] $AccessToken,
-    [Parameter()] [int] $PageSize = 100,
+    [Parameter()] [ValidateRange(1, 100)] [int] $PageSize = 100,
     [Parameter()] [int] $PageNumber = 1,
     [Parameter()] [string] $NumberFilter
   )
@@ -510,7 +510,7 @@ function Get-GcExtensionsAll {
   param(
     [Parameter(Mandatory)] [string] $ApiBaseUri,
     [Parameter(Mandatory)] [string] $AccessToken,
-    [Parameter()] [int] $PageSize = 100
+    [Parameter()] [ValidateRange(1, 100)] [int] $PageSize = 100
   )
 
   Write-Log -Level INFO -Message "Fetching extensions (full crawl)" -Data @{ PageSize = $PageSize }
@@ -593,8 +593,8 @@ function New-GcExtensionAuditContext {
     [Parameter(Mandatory)] [string] $ApiBaseUri,
     [Parameter(Mandatory)] [string] $AccessToken,
     [Parameter()] [switch] $IncludeInactive,
-    [Parameter()] [int] $UsersPageSize = 500,
-    [Parameter()] [int] $ExtensionsPageSize = 100,
+    [Parameter()] [ValidateRange(1, 500)] [int] $UsersPageSize = 500,
+    [Parameter()] [ValidateRange(1, 100)] [int] $ExtensionsPageSize = 100,
     [Parameter()] [int] $MaxFullExtensionPages = 25
   )
 

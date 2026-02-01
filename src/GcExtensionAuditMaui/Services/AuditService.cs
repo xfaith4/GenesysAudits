@@ -8,6 +8,12 @@ namespace GcExtensionAuditMaui.Services;
 
 public sealed class AuditService
 {
+    public const int UsersPageSizeMax = 500;
+    public const int ExtensionsPageSizeMax = 100;
+
+    public const int DefaultUsersPageSize = UsersPageSizeMax;
+    public const int DefaultExtensionsPageSize = ExtensionsPageSizeMax;
+
     private readonly GenesysCloudApiClient _api;
     private readonly LoggingService _log;
 
@@ -30,6 +36,9 @@ public sealed class AuditService
         IProgress<string>? progress,
         CancellationToken ct)
     {
+        usersPageSize = Math.Clamp(usersPageSize, 1, UsersPageSizeMax);
+        extensionsPageSize = Math.Clamp(extensionsPageSize, 1, ExtensionsPageSizeMax);
+
         _log.Log(LogLevel.Info, "Building audit context", new { auditKind = auditKind.ToString(), includeInactive, usersPageSize, extensionsPageSize, maxFullExtensionPages });
 
         progress?.Report("Fetching users page 1…");
