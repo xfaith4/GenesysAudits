@@ -65,9 +65,7 @@ Alternative (default publish folder):
   - Fetch users (paged)
   - Toggle **Audit: Ext / DID**
   - Extract profile value from `user.addresses` where `mediaType=PHONE` and `type=WORK` (fallback to any `PHONE`)
-  - Probe extensions paging and choose mode:
-    - **FULL**: crawl all extensions paged (if `pageCount <= MaxFullExtensionPages`)
-    - **TARGETED**: query by distinct extension numbers using `?number=...` (cached per number)
+  - Fetch extensions (paged, FULL crawl)
 - Shows a “Context Summary” (users totals, distinct extensions, loaded extensions, mode)
 
 1) **Generate findings + plan**
@@ -122,7 +120,6 @@ Exports include:
 - `GET /api/v2/users/{id}`
 - `PATCH /api/v2/users/{id}`
 - `GET /api/v2/telephony/providers/edges/extensions?pageSize={N}&pageNumber={p}`
-- `GET /api/v2/telephony/providers/edges/extensions?number={extensionNumber}`
 - `GET /api/v2/telephony/providers/edges/dids?pageSize={N}&pageNumber={p}`
 
 Authentication:

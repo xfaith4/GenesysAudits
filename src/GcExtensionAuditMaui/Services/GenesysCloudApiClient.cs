@@ -42,9 +42,6 @@ public sealed class GenesysCloudApiClient
     public Task<PagedResponse<GcExtension>?> GetExtensionsPageAsync(string apiBaseUri, string accessToken, int pageSize, int pageNumber, CancellationToken ct)
         => SendAsync<PagedResponse<GcExtension>>(HttpMethod.Get, apiBaseUri, accessToken, $"/api/v2/telephony/providers/edges/extensions?pageSize={pageSize}&pageNumber={pageNumber}", body: null, ct);
 
-    public Task<PagedResponse<GcExtension>?> GetExtensionsByNumberAsync(string apiBaseUri, string accessToken, string number, CancellationToken ct)
-        => SendAsync<PagedResponse<GcExtension>>(HttpMethod.Get, apiBaseUri, accessToken, $"/api/v2/telephony/providers/edges/extensions?number={Uri.EscapeDataString(number)}", body: null, ct);
-
     public Task<PagedResponse<GcDid>?> GetDidsPageAsync(string apiBaseUri, string accessToken, int pageSize, int pageNumber, CancellationToken ct)
         => SendAsync<PagedResponse<GcDid>>(HttpMethod.Get, apiBaseUri, accessToken, $"/api/v2/telephony/providers/edges/dids?pageSize={pageSize}&pageNumber={pageNumber}", body: null, ct);
 

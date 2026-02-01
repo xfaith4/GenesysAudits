@@ -18,9 +18,9 @@ public sealed class AuditContext
     public required IReadOnlyList<string> ProfileExtensionNumbers { get; init; }
 
     public required IReadOnlyList<GcExtension> Extensions { get; init; }
-    public required string ExtensionMode { get; init; } // FULL | TARGETED
+    public required string ExtensionMode { get; init; } // FULL
 
-    // Only meaningful for TARGETED mode. Map: extensionNumber => entities array from server.
+    // Reserved for any future caching strategy. Currently always null.
     public IReadOnlyDictionary<string, IReadOnlyList<GcExtension>>? ExtensionCache { get; init; }
 
     public required IReadOnlyDictionary<string, IReadOnlyList<GcExtension>> ExtensionsByNumber { get; init; }

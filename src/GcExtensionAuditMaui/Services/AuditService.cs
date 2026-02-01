@@ -257,59 +257,26 @@ public sealed class AuditService
 
             probePageCount = probe?.PageCount ?? 0;
 
-            if (probePageCount <= maxFullExtensionPages)
+            extMode = "FULL";
+            progress?.Report("Loading extensions (FULL)…");
+            _log.Log(LogLevel.Info, "Using FULL extensions mode", new { probePageCount, maxFullExtensionPages });
+
+            if (probe is not null)
             {
-                extMode = "FULL";
-                progress?.Report("Loading extensions (FULL)…");
-                _log.Log(LogLevel.Info, "Using FULL extensions mode", new { probePageCount });
-
-                var extPage = 1;
-                var extPageCount = 0;
-                do
-                {
-                    ct.ThrowIfCancellationRequested();
-                    progress?.Report($"Loading extensions (FULL) page {extPage}…");
-
-                    var resp = await _api.GetExtensionsPageAsync(apiBaseUri, accessToken, extensionsPageSize, extPage, ct).ConfigureAwait(false);
-                    if (resp is null) { break; }
-
-                    extPageCount = resp.PageCount;
-                    extensions.AddRange(resp.Entities.Where(e => e is not null));
-                    _log.Log(LogLevel.Info, "Extensions page fetched", new { PageNumber = extPage, resp.PageCount, Entities = resp.Entities.Count, TotalSoFar = extensions.Count });
-                    extPage++;
-                } while (extPage <= extPageCount);
+                extensions.AddRange(probe.Entities.Where(e => e is not null));
+                _log.Log(LogLevel.Info, "Extensions page fetched", new { PageNumber = 1, probe.PageCount, Entities = probe.Entities.Count, TotalSoFar = extensions.Count });
             }
-            else
+
+            for (var extPage = 2; extPage <= probePageCount; extPage++)
             {
-                extMode = "TARGETED";
-                progress?.Report("Loading extensions (TARGETED)…");
-                _log.Log(LogLevel.Info, "Using TARGETED extensions mode", new { probePageCount, TargetNumbers = distinctProfileExt.Count });
+                ct.ThrowIfCancellationRequested();
+                progress?.Report($"Loading extensions (FULL) page {extPage}…");
 
-                extCache = new Dictionary<string, IReadOnlyList<GcExtension>>(StringComparer.OrdinalIgnoreCase);
-                var i = 0;
-                foreach (var n in distinctProfileExt)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    i++;
-                    if (extCache.ContainsKey(n)) { continue; }
+                var resp = await _api.GetExtensionsPageAsync(apiBaseUri, accessToken, extensionsPageSize, extPage, ct).ConfigureAwait(false);
+                if (resp is null) { break; }
 
-                    progress?.Report($"Loading extensions (TARGETED) {i}/{distinctProfileExt.Count}…");
-
-                    try
-                    {
-                        var resp = await _api.GetExtensionsByNumberAsync(apiBaseUri, accessToken, n, ct).ConfigureAwait(false);
-                        var ents = (IReadOnlyList<GcExtension>)(resp?.Entities ?? new List<GcExtension>());
-                        extCache[n] = ents;
-                        extensions.AddRange(ents);
-                    }
-                    catch (Exception ex)
-                    {
-                        _log.Log(LogLevel.Warn, $"Extension lookup failed for number {n}", ex: ex);
-                        extCache[n] = Array.Empty<GcExtension>();
-                    }
-
-                    await Task.Delay(75, ct).ConfigureAwait(false);
-                }
+                extensions.AddRange(resp.Entities.Where(e => e is not null));
+                _log.Log(LogLevel.Info, "Extensions page fetched", new { PageNumber = extPage, resp.PageCount, Entities = resp.Entities.Count, TotalSoFar = extensions.Count });
             }
         }
 

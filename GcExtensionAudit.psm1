@@ -493,14 +493,10 @@ function Get-GcExtensionsPage {
     [Parameter(Mandatory)] [string] $ApiBaseUri,
     [Parameter(Mandatory)] [string] $AccessToken,
     [Parameter()] [ValidateRange(1, 100)] [int] $PageSize = 100,
-    [Parameter()] [int] $PageNumber = 1,
-    [Parameter()] [string] $NumberFilter
+    [Parameter()] [int] $PageNumber = 1
   )
 
   $q = "/api/v2/telephony/providers/edges/extensions?pageSize=$PageSize&pageNumber=$PageNumber"
-  if (-not [string]::IsNullOrWhiteSpace($NumberFilter)) {
-    $q = "/api/v2/telephony/providers/edges/extensions?number=$([uri]::EscapeDataString($NumberFilter))"
-  }
 
   Invoke-GcApi -Method GET -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -PathAndQuery $q
 }
@@ -533,54 +529,6 @@ function Get-GcExtensionsAll {
   } while ($page -le [int]$resp.pageCount)
 
   return @($exts)
-}
-
-function Get-GcExtensionsByNumbers {
-  [CmdletBinding()]
-  param(
-    [Parameter(Mandatory)] [string] $ApiBaseUri,
-    [Parameter(Mandatory)] [string] $AccessToken,
-    [Parameter(Mandatory)] [string[]] $Numbers,
-    [Parameter()] [int] $SleepMs = 75
-  )
-
-  $distinct = @($Numbers | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-  Write-Log -Level INFO -Message "Fetching extensions (targeted by number)" -Data @{ DistinctNumbers = $distinct.Count; SleepMs = $SleepMs }
-
-  $cache = @{}
-  $out = New-Object System.Collections.Generic.List[object]
-  $i = 0
-
-  foreach ($n in $distinct) {
-    $i++
-    if ($cache.ContainsKey($n)) { continue }
-
-    try {
-      $resp = Get-GcExtensionsPage -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -NumberFilter $n
-      $ents = @($resp.entities)
-      $cache[$n] = $ents
-
-      foreach ($e in $ents) { $out.Add($e) }
-
-      if (($i % 50) -eq 0) {
-        Write-Log -Level INFO -Message "Targeted extension lookups progress" -Data @{
-          Completed = $i
-          Total     = $distinct.Count
-          FoundSoFar = $out.Count
-        }
-      }
-    } catch {
-      Write-Log -Level WARN -Message "Extension lookup failed for number $($n)" -Data @{ Error = $_.Exception.Message }
-      $cache[$n] = @()
-    }
-
-    if ($SleepMs -gt 0) { Start-Sleep -Milliseconds $SleepMs }
-  }
-
-  return [pscustomobject]@{
-    Extensions = @($out)
-    Cache     = $cache
-  }
 }
 
 #endregion Data Collection
@@ -652,58 +600,13 @@ function New-GcExtensionAuditContext {
     DistinctProfileExtensions = (@($profileExtNumbers | Select-Object -Unique)).Count
   }
 
-  # Decide extension fetch strategy with 1 page probe
-  Write-Log -Level INFO -Message "Probing extensions pageCount" -Data @{ ExtensionsPageSize = $ExtensionsPageSize }
-  
-  $probe = $null
-  $pageCount = 0
-  try {
-    $probe = Get-GcExtensionsPage -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -PageSize $ExtensionsPageSize -PageNumber 1
-    $pageCount = [int]$probe.pageCount
-    
-    Write-Log -Level INFO -Message "Extensions probe successful" -Data @{ PageCount = $pageCount; MaxFullExtensionPages = $MaxFullExtensionPages }
-  } catch {
-    # Check for 401/403 and provide clearer error
-    $statusCode = $null
-    try {
-      if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
-        $statusCode = [int]$_.Exception.Response.StatusCode
-      }
-    } catch { $null = $_ }
-    
-    $errMsg = $_.Exception.Message
-    if ($statusCode -eq 401 -or $statusCode -eq 403) {
-      $errMsg = "Token lacks telephony/extensions permissions or is invalid. Status: $statusCode. Original error: $errMsg"
-    }
-    
-    Write-Log -Level ERROR -Message "Extensions probe failed" -Data @{
-      StatusCode = $statusCode
-      Error = $errMsg
-    }
-    throw $errMsg
-  }
+  Write-Log -Level INFO -Message "Loading extensions (FULL)" -Data @{ ExtensionsPageSize = $ExtensionsPageSize }
 
-  $extensions = @()
-  $extMode = $null
+  $extMode = 'FULL'
   $extCache = $null
+  $extensions = Get-GcExtensionsAll -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -PageSize $ExtensionsPageSize
 
-  if ($pageCount -le $MaxFullExtensionPages) {
-    $extMode = 'FULL'
-    Write-Log -Level INFO -Message "Using FULL extensions mode" -Data @{ PageCount = $pageCount }
-    $extensions = Get-GcExtensionsAll -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -PageSize $ExtensionsPageSize
-  } else {
-    $extMode = 'TARGETED'
-    Write-Log -Level INFO -Message "Using TARGETED extensions mode" -Data @{ PageCount = $pageCount; TargetNumbers = (@($profileExtNumbers | Select-Object -Unique)).Count }
-    $targeted = Get-GcExtensionsByNumbers -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -Numbers @($profileExtNumbers) -SleepMs 75
-    $extensions = @($targeted.Extensions)
-    $extCache = $targeted.Cache
-  }
-
-  Write-Log -Level INFO -Message "Extensions loaded" -Data @{
-    Mode = $extMode
-    ProbePageCount = $pageCount
-    ExtensionsLoaded = $extensions.Count
-  }
+  Write-Log -Level INFO -Message "Extensions loaded" -Data @{ Mode = $extMode; ExtensionsLoaded = $extensions.Count }
 
   # Extension lookups by number
   $extByNumber = @{}
@@ -1199,7 +1102,7 @@ function Export-ReportCsv {
 Export-ModuleMember -Function @(
   'New-GcExtensionAuditLogPath','Set-GcLogPath','Write-Log','Get-GcApiStats',
   'Invoke-GcApi',
-  'Get-GcUsersAll','Get-GcExtensionsAll','Get-GcExtensionsByNumbers',
+  'Get-GcUsersAll','Get-GcExtensionsAll',
   'New-GcExtensionAuditContext',
   'Find-DuplicateUserExtensionAssignments','Find-DuplicateExtensionRecords',
   'Find-ExtensionDiscrepancies','Find-MissingExtensionAssignments',

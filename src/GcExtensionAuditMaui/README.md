@@ -41,7 +41,7 @@ Alternative (default publish folder):
 - Provide API Base URI + access token (or `GC_ACCESS_TOKEN`) and click **Build Context**.
 - The app shows explicit progress stages and produces an in-memory `AuditContext` with:
   - users and profile extensions
-  - extension inventory (FULL or TARGETED mode)
+  - extension inventory (FULL crawl)
   - lookup dictionaries for fast report generation
 
 2) Run Audit (generate findings + plan)
@@ -69,7 +69,7 @@ This app uses the following endpoints:
 
 - `GET /api/v2/users` and `GET /api/v2/users/{id}`
 - `PATCH /api/v2/users/{id}`
-- `GET /api/v2/telephony/providers/edges/extensions` (paged and/or `?number=...`)
+- `GET /api/v2/telephony/providers/edges/extensions` (paged)
 - `GET /api/v2/telephony/providers/edges/dids` (paged)
 
 Genesys Cloud authorization is governed by the intersection of:
@@ -82,21 +82,9 @@ Practical scope guidance:
 - Read-only audit: `users:readonly` + `telephony:readonly`
 - Patch execution enabled: `users` + `telephony:readonly`
 
-## FULL vs TARGETED extension mode
+## Extensions inventory fetch strategy
 
-During **Build Context**, the app probes the Extensions inventory:
-
-- `GET /api/v2/telephony/providers/edges/extensions?pageSize=X&pageNumber=1`
-
-If `pageCount <= MaxFullExtensionPages`:
-
-- **FULL** mode: crawl all extensions paged and build `ExtensionsByNumber`.
-
-Else:
-
-- **TARGETED** mode: only query extensions for distinct profile extension numbers using:
-  - `GET /api/v2/telephony/providers/edges/extensions?number=<extensionNumber>`
-  - Results are cached per number to avoid repeat lookups.
+During **Build Context**, the app always crawls the full Extensions inventory paged and then audits that list against the users list.
 
 ## Output / exports
 
@@ -125,7 +113,7 @@ Reference PowerShell functions (from `GcExtensionAudit.psm1`) map to C# as follo
 - `Invoke-GcApi` → `Services/GenesysCloudApiClient.cs` (`SendAsync<T>`, retry/backoff, rate-limit snapshot + preemptive throttle)
 - `Get-GcUsersAll` → `Services/AuditService.cs` (`BuildContextAsync` user paging loop)
 - `Get-UserProfileExtension` → `Services/AuditService.cs` (`GetUserProfileExtension`)
-- `Get-GcExtensionsAll` / `Get-GcExtensionsByNumbers` → `Services/AuditService.cs` (`BuildContextAsync` FULL/TARGETED branches)
+- `Get-GcExtensionsAll` → `Services/AuditService.cs` (`BuildContextAsync` extensions paging loop)
 - `New-GcExtensionAuditContext` → `Services/AuditService.cs` (`BuildContextAsync`)
 - `Find-DuplicateUserExtensionAssignments` → `Services/AuditService.cs` (`FindDuplicateUserExtensionAssignments`)
 - `Find-DuplicateExtensionRecords` → `Services/AuditService.cs` (`FindDuplicateExtensionRecords`)
