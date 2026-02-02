@@ -139,105 +139,30 @@ public sealed class AuditService
             }
 
             probePageCount = probe?.PageCount ?? 0;
-            if (probePageCount <= maxFullExtensionPages)
+
+            extMode = "FULL";
+            progress?.Report("Loading DIDs (FULL)…");
+            _log.Log(LogLevel.Info, "Using FULL DIDs mode", new { probePageCount });
+
+            var pageNum = 1;
+            var pageCount2 = 0;
+            do
             {
-                extMode = "FULL";
-                progress?.Report("Loading DIDs (FULL)…");
-                _log.Log(LogLevel.Info, "Using FULL DIDs mode", new { probePageCount });
+                ct.ThrowIfCancellationRequested();
+                progress?.Report($"Loading DIDs (FULL) page {pageNum}…");
 
-                var pageNum = 1;
-                var pageCount2 = 0;
-                do
+                var resp = pageNum == 1 ? probe : await _api.GetDidsPageAsync(apiBaseUri, accessToken, extensionsPageSize, pageNum, ct).ConfigureAwait(false);
+                if (resp is null) { break; }
+
+                pageCount2 = resp.PageCount;
+                foreach (var d in resp.Entities.Where(d => d is not null))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    progress?.Report($"Loading DIDs (FULL) page {pageNum}…");
-
-                    var resp = pageNum == 1 ? probe : await _api.GetDidsPageAsync(apiBaseUri, accessToken, extensionsPageSize, pageNum, ct).ConfigureAwait(false);
-                    if (resp is null) { break; }
-
-                    pageCount2 = resp.PageCount;
-                    foreach (var d in resp.Entities.Where(d => d is not null))
-                    {
-                        var mapped = MapDidToExtension(d);
-                        if (mapped is not null) { extensions.Add(mapped); }
-                    }
-                    _log.Log(LogLevel.Info, "DIDs page fetched", new { PageNumber = pageNum, resp.PageCount, Entities = resp.Entities.Count, TotalSoFar = extensions.Count });
-                    pageNum++;
-                } while (pageNum <= pageCount2);
-            }
-            else
-            {
-                extMode = "TARGETED";
-                progress?.Report("Loading DIDs (TARGETED)…");
-                _log.Log(LogLevel.Info, "Using TARGETED DIDs mode", new { probePageCount, TargetNumbers = distinctProfileExt.Count });
-
-                extCache = new Dictionary<string, IReadOnlyList<GcExtension>>(StringComparer.OrdinalIgnoreCase);
-                var i = 0;
-                var fallbackToFull = false;
-                foreach (var n in distinctProfileExt)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    i++;
-                    if (extCache.ContainsKey(n)) { continue; }
-
-                    progress?.Report($"Loading DIDs (TARGETED) {i}/{distinctProfileExt.Count}…");
-
-                    try
-                    {
-                        var resp = await _api.GetDidsByNumberAsync(apiBaseUri, accessToken, n, ct).ConfigureAwait(false);
-                        var ents = (resp?.Entities ?? new List<GcDid>())
-                            .Select(MapDidToExtension)
-                            .OfType<GcExtension>()
-                            .ToList();
-
-                        extCache[n] = ents;
-                        extensions.AddRange(ents);
-                    }
-                    catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.BadRequest)
-                    {
-                        // Some orgs/platform variants may not support server-side filtering for this list endpoint.
-                        _log.Log(LogLevel.Warn, "DID targeted lookup not supported; falling back to FULL DID crawl", new { FirstFailedNumber = n, ex.StatusCode });
-                        fallbackToFull = true;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        _log.Log(LogLevel.Warn, $"DID lookup failed for number {n}", ex: ex);
-                        extCache[n] = Array.Empty<GcExtension>();
-                    }
-
-                    await Task.Delay(75, ct).ConfigureAwait(false);
+                    var mapped = MapDidToExtension(d);
+                    if (mapped is not null) { extensions.Add(mapped); }
                 }
-
-                if (fallbackToFull)
-                {
-                    extMode = "FULL";
-                    extCache = null;
-                    extensions.Clear();
-
-                    progress?.Report("Loading DIDs (FULL)…");
-
-                    var pageNum = 1;
-                    var pageCount2 = 0;
-                    do
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        progress?.Report($"Loading DIDs (FULL) page {pageNum}…");
-
-                        var resp = pageNum == 1 ? probe : await _api.GetDidsPageAsync(apiBaseUri, accessToken, extensionsPageSize, pageNum, ct).ConfigureAwait(false);
-                        if (resp is null) { break; }
-
-                        pageCount2 = resp.PageCount;
-                        foreach (var d in resp.Entities.Where(d => d is not null))
-                        {
-                            var mapped = MapDidToExtension(d);
-                            if (mapped is not null) { extensions.Add(mapped); }
-                        }
-                        _log.Log(LogLevel.Info, "DIDs page fetched", new { PageNumber = pageNum, resp.PageCount, Entities = resp.Entities.Count, TotalSoFar = extensions.Count });
-                        pageNum++;
-                    } while (pageNum <= pageCount2);
-                }
-            }
+                _log.Log(LogLevel.Info, "DIDs page fetched", new { PageNumber = pageNum, resp.PageCount, Entities = resp.Entities.Count, TotalSoFar = extensions.Count });
+                pageNum++;
+            } while (pageNum <= pageCount2);
         }
         else
         {
