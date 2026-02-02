@@ -43,6 +43,9 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<DashboardViewModel>();
         builder.Services.AddSingleton<DashboardPage>();
+        
+        builder.Services.AddSingleton<PatchPlanViewModel>();
+        builder.Services.AddSingleton<PatchPlanPage>();
 
         return builder.Build();
     }
