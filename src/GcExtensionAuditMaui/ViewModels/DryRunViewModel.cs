@@ -12,15 +12,17 @@ public sealed partial class DryRunViewModel : ObservableObject
     private readonly ContextStore _store;
     private readonly AuditService _audit;
     private readonly ReportModule _reportModule;
+    private readonly DialogService _dialogs;
 
     private DryRunReport? _report;
     private IReadOnlyList<DryRunRow> _allRows = Array.Empty<DryRunRow>();
 
-    public DryRunViewModel(ContextStore store, AuditService audit, ReportModule reportModule)
+    public DryRunViewModel(ContextStore store, AuditService audit, ReportModule reportModule, DialogService dialogs)
     {
         _store = store;
         _audit = audit;
         _reportModule = reportModule;
+        _dialogs = dialogs;
     }
 
     public ObservableRangeCollection<DryRunRow> Rows { get; } = new();
@@ -102,6 +104,8 @@ public sealed partial class DryRunViewModel : ObservableObject
             var outDir = await _reportModule.ExportFullAuditReportAsync(_store.Context, _report, _audit.Api.Stats, CancellationToken.None);
             _store.LastOutputFolder = outDir;
             LastExportFolder = outDir;
+            
+            await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
         }
         finally { IsBusy = false; }
     }

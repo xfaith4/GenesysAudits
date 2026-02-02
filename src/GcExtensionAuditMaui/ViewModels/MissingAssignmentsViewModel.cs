@@ -11,15 +11,17 @@ public sealed partial class MissingAssignmentsViewModel : ObservableObject
 {
     private readonly ContextStore _store;
     private readonly AuditService _audit;
-    private readonly ExportService _export;
+    private readonly ReportModule _reportModule;
+    private readonly DialogService _dialogs;
 
     private IReadOnlyList<MissingAssignmentRow> _rows = Array.Empty<MissingAssignmentRow>();
 
-    public MissingAssignmentsViewModel(ContextStore store, AuditService audit, ExportService export)
+    public MissingAssignmentsViewModel(ContextStore store, AuditService audit, ReportModule reportModule, DialogService dialogs)
     {
         _store = store;
         _audit = audit;
-        _export = export;
+        _reportModule = reportModule;
+        _dialogs = dialogs;
     }
 
     public ObservableRangeCollection<MissingAssignmentRow> Rows { get; } = new();
@@ -91,9 +93,11 @@ public sealed partial class MissingAssignmentsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var outDir = await _export.ExportRowsAsync(_store.Context, _rows, "Missing.csv", _audit.Api.Stats, CancellationToken.None);
+            var outDir = await _reportModule.ExportMissingAssignmentsToExcelAsync(_store.Context, _audit.Api.Stats, _rows, CancellationToken.None);
             _store.LastOutputFolder = outDir;
             LastExportFolder = outDir;
+            
+            await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
         }
         finally { IsBusy = false; }
     }
