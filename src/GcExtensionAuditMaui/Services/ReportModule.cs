@@ -129,7 +129,7 @@ public sealed class ReportModule
                 Severity = "High",
                 EntityType = "User",
                 EntityId = missing.UserId,
-                EntityName = missing.UserName,
+                EntityName = missing.UserName ?? "",
                 Field = "Extension",
                 Recommendation = "Create extension record or verify extension pool configuration",
                 SourceEndpoint = "/api/v2/users"
@@ -165,7 +165,7 @@ public sealed class ReportModule
                 Severity = "High",
                 EntityType = "User",
                 EntityId = dup.UserId,
-                EntityName = dup.UserName,
+                EntityName = dup.UserName ?? "",
                 Field = "Extension",
                 Recommendation = "Reassign extensions to ensure unique user-extension mappings",
                 SourceEndpoint = "/api/v2/users"
@@ -182,7 +182,7 @@ public sealed class ReportModule
                 NewState = "Only one extension record should exist",
                 Severity = "Critical",
                 EntityType = "Extension",
-                EntityId = dup.ExtensionId,
+                EntityId = dup.ExtensionId ?? "",
                 EntityName = dup.ExtensionNumber,
                 Field = "Extension Number",
                 Recommendation = "Remove duplicate extension records",
