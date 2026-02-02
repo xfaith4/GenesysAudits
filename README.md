@@ -50,6 +50,7 @@ Size reduction options:
 - Smallest output (requires both .NET runtime + Windows App Runtime installed): use `-FrameworkDependent`.
 
 Alternative (default publish folder):
+
 - `dotnet publish -c Release`
 - Run: `src\\GcExtensionAuditMaui\\bin\\Release\\net9.0-windows10.0.19041.0\\win10-x64\\publish\\GcExtensionAuditMaui.exe`
 
