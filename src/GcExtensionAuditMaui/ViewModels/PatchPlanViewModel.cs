@@ -293,9 +293,10 @@ public sealed partial class PatchPlanViewModel : ObservableObject
             }
 
             // Second confirmation
+            var itemsToProcess = PlanItems.Count; // This is the filtered count based on category selection
             var secondConfirm = await _dialogs.ConfirmAsync(
                 "⚠️⚠️ FINAL Confirmation",
-                $"This is your LAST CHANCE to cancel.\n\nThis will modify {PlanItems.Count} user extension assignments.\n\nThis action CANNOT be undone automatically.\n\nProceed with REAL changes?",
+                $"This is your LAST CHANCE to cancel.\n\nThis will modify {itemsToProcess} user extension assignment{(itemsToProcess != 1 ? "s" : "")}.\n\nThis action CANNOT be undone automatically.\n\nProceed with REAL changes?",
                 accept: "PATCH NOW",
                 cancel: "Cancel");
             

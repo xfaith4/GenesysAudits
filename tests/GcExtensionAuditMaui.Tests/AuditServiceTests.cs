@@ -230,11 +230,15 @@ public sealed class AuditServiceTests
         var missingOnly = plan.Items.Where(item => item.Category == "Missing").ToList();
         Assert.Single(missingOnly);
         Assert.Equal("Missing", missingOnly[0].Category);
+        Assert.Equal("u6", missingOnly[0].UserId); // Frank has missing extension 500
+        Assert.Equal("500", missingOnly[0].CurrentExtension);
         
         // Test filtering - only DuplicateUser
         var duplicateOnly = plan.Items.Where(item => item.Category == "DuplicateUser").ToList();
         Assert.Single(duplicateOnly); // Bob is duplicate of Alice on ext 100
         Assert.Equal("DuplicateUser", duplicateOnly[0].Category);
+        Assert.Equal("u2", duplicateOnly[0].UserId); // Bob (u2) is the duplicate that should be reassigned
+        Assert.Equal("100", duplicateOnly[0].CurrentExtension);
         
         // Test filtering - only Discrepancy
         var discrepancyOnly = plan.Items.Where(item => item.Category == "Discrepancy").ToList();
