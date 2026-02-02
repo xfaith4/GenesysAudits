@@ -18,6 +18,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     private readonly AuditService _audit;
     private readonly FixupPlannerService _planner;
     private readonly ExportService _export;
+    private readonly ReportModule _reportModule;
     private readonly ContextStore _store;
     private readonly DialogService _dialogs;
     private readonly PlatformOpenService _open;
@@ -30,6 +31,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         AuditService audit,
         FixupPlannerService planner,
         ExportService export,
+        ReportModule reportModule,
         ContextStore store,
         DialogService dialogs,
         PlatformOpenService open,
@@ -38,6 +40,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         _audit = audit;
         _planner = planner;
         _export = export;
+        _reportModule = reportModule;
         _store = store;
         _dialogs = dialogs;
         _open = open;
@@ -792,10 +795,12 @@ public sealed partial class DashboardViewModel : ObservableObject
         try
         {
             var report = await Task.Run(() => _audit.NewDryRunReport(_store.Context));
-            var outDir = await _export.ExportDryRunAsync(_store.Context, report, _audit.Api.Stats, CancellationToken.None);
+            var outDir = await _reportModule.ExportFullAuditReportAsync(_store.Context, report, _audit.Api.Stats, CancellationToken.None);
             _store.LastOutputFolder = outDir;
             LastOutputFolder = outDir;
             StatusText = "Audit report exported.";
+            
+            await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
         }
         finally
         {

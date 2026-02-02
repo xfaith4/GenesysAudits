@@ -72,6 +72,110 @@ public sealed class ReportModule
         return outDir;
     }
 
+    /// <summary>
+    /// Exports discrepancies to Excel format.
+    /// </summary>
+    public async Task<string> ExportDiscrepanciesToExcelAsync(
+        AuditContext context,
+        ApiStats apiStats,
+        IEnumerable<DiscrepancyRow> discrepancies,
+        CancellationToken ct = default)
+    {
+        var issues = discrepancies.Select(d => new IssueRow
+        {
+            IssueFound = d.Issue,
+            CurrentState = $"Extension {d.ProfileExtension} has issue: {d.Issue}",
+            NewState = "Extension assignment needs correction",
+            Severity = "Medium",
+            EntityType = "Extension",
+            EntityId = d.ExtensionId ?? "",
+            EntityName = d.ProfileExtension,
+            Field = "Owner",
+            Recommendation = "Review extension ownership and user profile",
+            SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+        }).ToList();
+
+        return await ExportExcelReportAsync(context, apiStats, issues, ct);
+    }
+
+    /// <summary>
+    /// Exports missing assignments to Excel format.
+    /// </summary>
+    public async Task<string> ExportMissingAssignmentsToExcelAsync(
+        AuditContext context,
+        ApiStats apiStats,
+        IEnumerable<MissingAssignmentRow> missingAssignments,
+        CancellationToken ct = default)
+    {
+        var issues = missingAssignments.Select(m => new IssueRow
+        {
+            IssueFound = m.ProfileExtension + " - Missing Extension",
+            CurrentState = $"User: {m.UserEmail}, Extension: {m.ProfileExtension}",
+            NewState = "Extension needs to be created or assigned",
+            Severity = "High",
+            EntityType = "User",
+            EntityId = m.UserId,
+            EntityName = m.UserName ?? "",
+            Field = "Extension",
+            Recommendation = "Create extension record or verify extension pool configuration",
+            SourceEndpoint = "/api/v2/users"
+        }).ToList();
+
+        return await ExportExcelReportAsync(context, apiStats, issues, ct);
+    }
+
+    /// <summary>
+    /// Exports duplicate user assignments to Excel format.
+    /// </summary>
+    public async Task<string> ExportDuplicateUsersToExcelAsync(
+        AuditContext context,
+        ApiStats apiStats,
+        IEnumerable<DuplicateUserAssignmentRow> duplicateUsers,
+        CancellationToken ct = default)
+    {
+        var issues = duplicateUsers.Select(d => new IssueRow
+        {
+            IssueFound = "Duplicate Extension Assignment",
+            CurrentState = $"Multiple users assigned to extension: {d.ProfileExtension}",
+            NewState = "Only one user should have this extension",
+            Severity = "High",
+            EntityType = "User",
+            EntityId = d.UserId,
+            EntityName = d.UserName ?? "",
+            Field = "Extension",
+            Recommendation = "Reassign extensions to ensure unique user-extension mappings",
+            SourceEndpoint = "/api/v2/users"
+        }).ToList();
+
+        return await ExportExcelReportAsync(context, apiStats, issues, ct);
+    }
+
+    /// <summary>
+    /// Exports duplicate extension records to Excel format.
+    /// </summary>
+    public async Task<string> ExportDuplicateExtensionsToExcelAsync(
+        AuditContext context,
+        ApiStats apiStats,
+        IEnumerable<DuplicateExtensionRecordRow> duplicateExtensions,
+        CancellationToken ct = default)
+    {
+        var issues = duplicateExtensions.Select(d => new IssueRow
+        {
+            IssueFound = "Duplicate Extension Record",
+            CurrentState = $"Multiple records for extension: {d.ExtensionNumber}",
+            NewState = "Only one extension record should exist",
+            Severity = "Critical",
+            EntityType = "Extension",
+            EntityId = d.ExtensionId ?? "",
+            EntityName = d.ExtensionNumber,
+            Field = "Extension Number",
+            Recommendation = "Remove duplicate extension records",
+            SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+        }).ToList();
+
+        return await ExportExcelReportAsync(context, apiStats, issues, ct);
+    }
+
     private static string GenerateExcelFileName()
     {
         return $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";

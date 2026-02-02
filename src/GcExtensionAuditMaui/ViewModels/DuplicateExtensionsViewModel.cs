@@ -11,15 +11,17 @@ public sealed partial class DuplicateExtensionsViewModel : ObservableObject
 {
     private readonly ContextStore _store;
     private readonly AuditService _audit;
-    private readonly ExportService _export;
+    private readonly ReportModule _reportModule;
+    private readonly DialogService _dialogs;
 
     private IReadOnlyList<DuplicateExtensionRecordRow> _rows = Array.Empty<DuplicateExtensionRecordRow>();
 
-    public DuplicateExtensionsViewModel(ContextStore store, AuditService audit, ExportService export)
+    public DuplicateExtensionsViewModel(ContextStore store, AuditService audit, ReportModule reportModule, DialogService dialogs)
     {
         _store = store;
         _audit = audit;
-        _export = export;
+        _reportModule = reportModule;
+        _dialogs = dialogs;
     }
 
     public ObservableRangeCollection<DuplicateExtensionRecordRow> Rows { get; } = new();
@@ -91,9 +93,11 @@ public sealed partial class DuplicateExtensionsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var outDir = await _export.ExportRowsAsync(_store.Context, _rows, "DuplicatesExtensions.csv", _audit.Api.Stats, CancellationToken.None);
+            var outDir = await _reportModule.ExportDuplicateExtensionsToExcelAsync(_store.Context, _audit.Api.Stats, _rows, CancellationToken.None);
             _store.LastOutputFolder = outDir;
             LastExportFolder = outDir;
+            
+            await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
         }
         finally { IsBusy = false; }
     }
