@@ -35,6 +35,8 @@
                             <Label Text="Audit:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
                             <RadioButton Content="Ext" GroupName="AuditKind" IsChecked="{Binding IsAuditExtensions}" />
                             <RadioButton Content="DID" GroupName="AuditKind" IsChecked="{Binding IsAuditDids}" />
+                            <CheckBox IsChecked="{Binding RunBothAudits}" VerticalOptions="Center" />
+                            <Label Text="Both" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </Frame>
                     <Button Text="Export" Command="{Binding ExportAuditReportCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />

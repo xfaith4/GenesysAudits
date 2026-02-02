@@ -47,6 +47,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         _log = log;
 
         AuditKind = (AuditNumberKind)Preferences.Get(nameof(AuditKind), (int)AuditNumberKind.Extension);
+        RunBothAudits = Preferences.Get(nameof(RunBothAudits), false);
         ApiBaseUri = Preferences.Get(nameof(ApiBaseUri), "https://api.usw2.pure.cloud");
         UseEnvToken = Preferences.Get(nameof(UseEnvToken), false);
         IncludeInactive = Preferences.Get(nameof(IncludeInactive), false);
@@ -98,8 +99,24 @@ public sealed partial class DashboardViewModel : ObservableObject
         set { if (value) { AuditKind = AuditNumberKind.Did; } }
     }
 
+    private bool _runBothAudits;
+    public bool RunBothAudits
+    {
+        get => _runBothAudits;
+        set
+        {
+            if (IsBusy) { return; }
+            if (SetProperty(ref _runBothAudits, value))
+            {
+                Preferences.Set(nameof(RunBothAudits), value);
+                OnPropertyChanged(nameof(AuditTitle));
+            }
+        }
+    }
+
     public string AuditTitle
-        => AuditKind == AuditNumberKind.Did ? "Genesys Cloud DID Audit" : "Genesys Cloud Extension Audit";
+        => RunBothAudits ? "Genesys Cloud Combined Audit (Extensions + DIDs)" 
+            : (AuditKind == AuditNumberKind.Did ? "Genesys Cloud DID Audit" : "Genesys Cloud Extension Audit");
 
     private string _apiBaseUri = "";
     public string ApiBaseUri
@@ -500,20 +517,64 @@ public sealed partial class DashboardViewModel : ObservableObject
 
         try
         {
-            var ctx = await _audit.BuildContextAsync(
-                auditKind: AuditKind,
-                apiBaseUri: ApiBaseUri,
-                accessToken: token,
-                includeInactive: IncludeInactive,
-                usersPageSize: AuditService.DefaultUsersPageSize,
-                extensionsPageSize: AuditService.DefaultExtensionsPageSize,
-                maxFullExtensionPages: 25,
-                progress: progress,
-                ct: _cts.Token);
+            if (RunBothAudits)
+            {
+                // Build Extension context
+                StatusText = "Building Extension context…";
+                var extCtx = await _audit.BuildContextAsync(
+                    auditKind: AuditNumberKind.Extension,
+                    apiBaseUri: ApiBaseUri,
+                    accessToken: token,
+                    includeInactive: IncludeInactive,
+                    usersPageSize: AuditService.DefaultUsersPageSize,
+                    extensionsPageSize: AuditService.DefaultExtensionsPageSize,
+                    maxFullExtensionPages: 25,
+                    progress: progress,
+                    ct: _cts.Token);
 
-            _store.Context = ctx;
-            _store.Summary = _audit.GetSummary(ctx);
-            ContextSummaryText = _store.Summary.ToString();
+                _store.ExtensionContext = extCtx;
+
+                // Build DID context
+                StatusText = "Building DID context…";
+                var didCtx = await _audit.BuildContextAsync(
+                    auditKind: AuditNumberKind.Did,
+                    apiBaseUri: ApiBaseUri,
+                    accessToken: token,
+                    includeInactive: IncludeInactive,
+                    usersPageSize: AuditService.DefaultUsersPageSize,
+                    extensionsPageSize: AuditService.DefaultExtensionsPageSize,
+                    maxFullExtensionPages: 25,
+                    progress: progress,
+                    ct: _cts.Token);
+
+                _store.DidContext = didCtx;
+                
+                // Set Context to ExtensionContext for compatibility with UI
+                _store.Context = extCtx;
+                _store.Summary = _audit.GetSummary(extCtx);
+                
+                var extSummary = _audit.GetSummary(extCtx);
+                var didSummary = _audit.GetSummary(didCtx);
+                ContextSummaryText = $"Extensions: {extSummary}; DIDs: {didSummary}";
+            }
+            else
+            {
+                var ctx = await _audit.BuildContextAsync(
+                    auditKind: AuditKind,
+                    apiBaseUri: ApiBaseUri,
+                    accessToken: token,
+                    includeInactive: IncludeInactive,
+                    usersPageSize: AuditService.DefaultUsersPageSize,
+                    extensionsPageSize: AuditService.DefaultExtensionsPageSize,
+                    maxFullExtensionPages: 25,
+                    progress: progress,
+                    ct: _cts.Token);
+
+                _store.Context = ctx;
+                _store.Summary = _audit.GetSummary(ctx);
+                ContextSummaryText = _store.Summary.ToString();
+            }
+
             LastContextAt = DateTime.Now;
             StatusText = "Context ready.";
         }
@@ -794,13 +855,35 @@ public sealed partial class DashboardViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var report = await Task.Run(() => _audit.NewDryRunReport(_store.Context));
-            var outDir = await _reportModule.ExportFullAuditReportAsync(_store.Context, report, _audit.Api.Stats, CancellationToken.None);
-            _store.LastOutputFolder = outDir;
-            LastOutputFolder = outDir;
-            StatusText = "Audit report exported.";
-            
-            await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
+            if (RunBothAudits && _store.ExtensionContext is not null && _store.DidContext is not null)
+            {
+                // Export combined audit report
+                var extReport = await Task.Run(() => _audit.NewDryRunReport(_store.ExtensionContext));
+                var didReport = await Task.Run(() => _audit.NewDryRunReport(_store.DidContext));
+                var outDir = await _reportModule.ExportCombinedAuditReportAsync(
+                    _store.ExtensionContext, 
+                    _store.DidContext, 
+                    extReport, 
+                    didReport, 
+                    _audit.Api.Stats, 
+                    CancellationToken.None);
+                _store.LastOutputFolder = outDir;
+                LastOutputFolder = outDir;
+                StatusText = "Combined audit report exported.";
+                
+                await _dialogs.AlertAsync("Export Successful", $"Combined report exported successfully to:\n{outDir}");
+            }
+            else
+            {
+                // Export single audit report
+                var report = await Task.Run(() => _audit.NewDryRunReport(_store.Context));
+                var outDir = await _reportModule.ExportFullAuditReportAsync(_store.Context, report, _audit.Api.Stats, CancellationToken.None);
+                _store.LastOutputFolder = outDir;
+                LastOutputFolder = outDir;
+                StatusText = "Audit report exported.";
+                
+                await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
+            }
         }
         finally
         {

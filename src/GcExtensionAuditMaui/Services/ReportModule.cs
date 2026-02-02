@@ -21,6 +21,86 @@ public sealed class ReportModule
     }
 
     /// <summary>
+    /// Exports combined Extension and DID audit data into a single Excel workbook.
+    /// </summary>
+    public async Task<string> ExportCombinedAuditReportAsync(
+        AuditContext extensionContext,
+        AuditContext didContext,
+        DryRunReport extensionReport,
+        DryRunReport didReport,
+        ApiStats apiStats,
+        CancellationToken ct = default)
+    {
+        var outDir = _paths.GetNewOutputFolder();
+        var fileName = $"GenesysCombinedAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var outputPath = Path.Combine(outDir, fileName);
+
+        await Task.Run(() =>
+        {
+            var snapshots = new List<ApiSnapshot>();
+            var issues = new List<IssueRow>();
+
+            // Add Users snapshot (only once since same users for both audits)
+            if (extensionContext.Users.Count > 0)
+            {
+                var userElements = extensionContext.Users
+                    .Select(u => JsonSerializer.SerializeToElement(u))
+                    .ToList();
+                
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "Users",
+                    Endpoint = "/api/v2/users",
+                    Items = userElements
+                });
+            }
+
+            // Add Extensions snapshot
+            if (extensionContext.Extensions.Count > 0)
+            {
+                var extensionElements = extensionContext.Extensions
+                    .Select(e => JsonSerializer.SerializeToElement(e))
+                    .ToList();
+
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "Extensions",
+                    Endpoint = "/api/v2/telephony/providers/edges/extensions",
+                    Items = extensionElements
+                });
+            }
+
+            // Add DIDs snapshot
+            if (didContext.Extensions.Count > 0)
+            {
+                var didElements = didContext.Extensions
+                    .Select(e => JsonSerializer.SerializeToElement(e))
+                    .ToList();
+
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "DIDs",
+                    Endpoint = "/api/v2/telephony/providers/edges/dids",
+                    Items = didElements
+                });
+            }
+
+            // Convert extension issues
+            var extensionIssues = ConvertReportToIssues(extensionContext, extensionReport);
+            issues.AddRange(extensionIssues);
+
+            // Convert DID issues
+            var didIssues = ConvertReportToIssues(didContext, didReport);
+            issues.AddRange(didIssues);
+
+            ExcelReportExporter.Export(outputPath, snapshots, issues);
+        }, ct);
+
+        _log.Log(Models.Logging.LogLevel.Info, "Combined audit report exported", new { OutDir = outDir, FileName = fileName });
+        return outDir;
+    }
+
+    /// <summary>
     /// Exports audit data in Excel format with API snapshots and issue tracking.
     /// </summary>
     public async Task<string> ExportExcelReportAsync(
@@ -30,7 +110,7 @@ public sealed class ReportModule
         CancellationToken ct = default)
     {
         var outDir = _paths.GetNewOutputFolder();
-        var fileName = GenerateExcelFileName();
+        var fileName = GenerateExcelFileName(context.AuditKind);
         var outputPath = Path.Combine(outDir, fileName);
 
         await Task.Run(() =>
@@ -58,13 +138,13 @@ public sealed class ReportModule
         await _csvExporter.ExportDryRunCsvOnlyAsync(context, report, apiStats, outDir, ct);
 
         // Also export Excel version
-        var fileName = GenerateExcelFileName();
+        var fileName = GenerateExcelFileName(context.AuditKind);
         var excelPath = Path.Combine(outDir, fileName);
 
         await Task.Run(() =>
         {
             var snapshots = BuildApiSnapshots(context);
-            var issues = ConvertReportToIssues(report);
+            var issues = ConvertReportToIssues(context, report);
             ExcelReportExporter.Export(excelPath, snapshots, issues);
         }, ct);
 
@@ -81,18 +161,22 @@ public sealed class ReportModule
         IEnumerable<DiscrepancyRow> discrepancies,
         CancellationToken ct = default)
     {
+        var entityType = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var numberLabel = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var endpoint = context.AuditKind == AuditNumberKind.Did ? "/api/v2/telephony/providers/edges/dids" : "/api/v2/telephony/providers/edges/extensions";
+
         var issues = discrepancies.Select(d => new IssueRow
         {
             IssueFound = d.Issue,
-            CurrentState = $"Extension {d.ProfileExtension} has issue: {d.Issue}",
-            NewState = "Extension assignment needs correction",
+            CurrentState = $"{numberLabel} {d.ProfileExtension} has issue: {d.Issue}",
+            NewState = $"{numberLabel} assignment needs correction",
             Severity = "Medium",
-            EntityType = "Extension",
+            EntityType = entityType,
             EntityId = d.ExtensionId ?? "",
             EntityName = d.ProfileExtension,
             Field = "Owner",
-            Recommendation = "Review extension ownership and user profile",
-            SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+            Recommendation = $"Review {numberLabel.ToLower()} ownership and user profile",
+            SourceEndpoint = endpoint
         }).ToList();
 
         return await ExportExcelReportAsync(context, apiStats, issues, ct);
@@ -107,17 +191,19 @@ public sealed class ReportModule
         IEnumerable<MissingAssignmentRow> missingAssignments,
         CancellationToken ct = default)
     {
+        var numberLabel = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+
         var issues = missingAssignments.Select(m => new IssueRow
         {
             IssueFound = m.Issue,
-            CurrentState = $"User: {m.UserEmail}, Extension: {m.ProfileExtension}",
-            NewState = "Extension needs to be created or assigned",
+            CurrentState = $"User: {m.UserEmail}, {numberLabel}: {m.ProfileExtension}",
+            NewState = $"{numberLabel} needs to be created or assigned",
             Severity = "High",
             EntityType = "User",
             EntityId = m.UserId,
             EntityName = m.UserName ?? "",
-            Field = "Extension",
-            Recommendation = "Create extension record or verify extension pool configuration",
+            Field = numberLabel,
+            Recommendation = $"Create {numberLabel.ToLower()} record or verify {numberLabel.ToLower()} pool configuration",
             SourceEndpoint = "/api/v2/users"
         }).ToList();
 
@@ -133,17 +219,19 @@ public sealed class ReportModule
         IEnumerable<DuplicateUserAssignmentRow> duplicateUsers,
         CancellationToken ct = default)
     {
+        var numberLabel = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+
         var issues = duplicateUsers.Select(d => new IssueRow
         {
-            IssueFound = "Duplicate Extension Assignment",
-            CurrentState = $"Multiple users assigned to extension: {d.ProfileExtension}",
-            NewState = "Only one user should have this extension",
+            IssueFound = $"Duplicate {numberLabel} Assignment",
+            CurrentState = $"Multiple users assigned to {numberLabel.ToLower()}: {d.ProfileExtension}",
+            NewState = $"Only one user should have this {numberLabel.ToLower()}",
             Severity = "High",
             EntityType = "User",
             EntityId = d.UserId,
             EntityName = d.UserName ?? "",
-            Field = "Extension",
-            Recommendation = "Reassign extensions to ensure unique user-extension mappings",
+            Field = numberLabel,
+            Recommendation = $"Reassign {numberLabel.ToLower()}s to ensure unique user-{numberLabel.ToLower()} mappings",
             SourceEndpoint = "/api/v2/users"
         }).ToList();
 
@@ -159,26 +247,31 @@ public sealed class ReportModule
         IEnumerable<DuplicateExtensionRecordRow> duplicateExtensions,
         CancellationToken ct = default)
     {
+        var entityType = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var numberLabel = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var endpoint = context.AuditKind == AuditNumberKind.Did ? "/api/v2/telephony/providers/edges/dids" : "/api/v2/telephony/providers/edges/extensions";
+
         var issues = duplicateExtensions.Select(d => new IssueRow
         {
-            IssueFound = "Duplicate Extension Record",
-            CurrentState = $"Multiple records for extension: {d.ExtensionNumber}",
-            NewState = "Only one extension record should exist",
+            IssueFound = $"Duplicate {numberLabel} Record",
+            CurrentState = $"Multiple records for {numberLabel.ToLower()}: {d.ExtensionNumber}",
+            NewState = $"Only one {numberLabel.ToLower()} record should exist",
             Severity = "Critical",
-            EntityType = "Extension",
+            EntityType = entityType,
             EntityId = d.ExtensionId ?? "",
             EntityName = d.ExtensionNumber,
-            Field = "Extension Number",
-            Recommendation = "Remove duplicate extension records",
-            SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+            Field = $"{numberLabel} Number",
+            Recommendation = $"Remove duplicate {numberLabel.ToLower()} records",
+            SourceEndpoint = endpoint
         }).ToList();
 
         return await ExportExcelReportAsync(context, apiStats, issues, ct);
     }
 
-    private static string GenerateExcelFileName()
+    private static string GenerateExcelFileName(AuditNumberKind auditKind)
     {
-        return $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var auditType = auditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        return $"Genesys{auditType}Audit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
     }
 
     private static List<ApiSnapshot> BuildApiSnapshots(AuditContext context)
@@ -200,17 +293,20 @@ public sealed class ReportModule
             });
         }
 
-        // Add Extensions snapshot if available
+        // Add Extensions or DIDs snapshot based on audit type
         if (context.Extensions.Count > 0)
         {
             var extensionElements = context.Extensions
                 .Select(e => JsonSerializer.SerializeToElement(e))
                 .ToList();
 
+            var sheetName = context.AuditKind == AuditNumberKind.Did ? "DIDs" : "Extensions";
+            var endpoint = context.AuditKind == AuditNumberKind.Did ? "/api/v2/telephony/providers/edges/dids" : "/api/v2/telephony/providers/edges/extensions";
+
             snapshots.Add(new ApiSnapshot
             {
-                SheetName = "Extensions",
-                Endpoint = "/api/v2/telephony/providers/edges/extensions",
+                SheetName = sheetName,
+                Endpoint = endpoint,
                 Items = extensionElements
             });
         }
@@ -218,9 +314,12 @@ public sealed class ReportModule
         return snapshots;
     }
 
-    private static List<IssueRow> ConvertReportToIssues(DryRunReport report)
+    private static List<IssueRow> ConvertReportToIssues(AuditContext context, DryRunReport report)
     {
         var issues = new List<IssueRow>();
+        var numberLabel = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var entityType = context.AuditKind == AuditNumberKind.Did ? "DID" : "Extension";
+        var endpoint = context.AuditKind == AuditNumberKind.Did ? "/api/v2/telephony/providers/edges/dids" : "/api/v2/telephony/providers/edges/extensions";
 
         // Convert missing assignments
         foreach (var missing in report.MissingAssignments)
@@ -228,14 +327,14 @@ public sealed class ReportModule
             issues.Add(new IssueRow
             {
                 IssueFound = missing.Issue,
-                CurrentState = $"User: {missing.UserEmail}, Extension: {missing.ProfileExtension}",
-                NewState = "Extension needs to be created or assigned",
+                CurrentState = $"User: {missing.UserEmail}, {numberLabel}: {missing.ProfileExtension}",
+                NewState = $"{numberLabel} needs to be created or assigned",
                 Severity = "High",
                 EntityType = "User",
                 EntityId = missing.UserId,
                 EntityName = missing.UserName ?? "",
-                Field = "Extension",
-                Recommendation = "Create extension record or verify extension pool configuration",
+                Field = numberLabel,
+                Recommendation = $"Create {numberLabel.ToLower()} record or verify {numberLabel.ToLower()} pool configuration",
                 SourceEndpoint = "/api/v2/users"
             });
         }
@@ -246,15 +345,15 @@ public sealed class ReportModule
             issues.Add(new IssueRow
             {
                 IssueFound = discrepancy.Issue,
-                CurrentState = $"Extension {discrepancy.ProfileExtension} has issue: {discrepancy.Issue}",
-                NewState = "Extension assignment needs correction",
+                CurrentState = $"{numberLabel} {discrepancy.ProfileExtension} has issue: {discrepancy.Issue}",
+                NewState = $"{numberLabel} assignment needs correction",
                 Severity = "Medium",
-                EntityType = "Extension",
+                EntityType = entityType,
                 EntityId = discrepancy.ExtensionId ?? "",
                 EntityName = discrepancy.ProfileExtension,
                 Field = "Owner",
-                Recommendation = "Review extension ownership and user profile",
-                SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+                Recommendation = $"Review {numberLabel.ToLower()} ownership and user profile",
+                SourceEndpoint = endpoint
             });
         }
 
@@ -263,15 +362,15 @@ public sealed class ReportModule
         {
             issues.Add(new IssueRow
             {
-                IssueFound = "Duplicate Extension Assignment",
-                CurrentState = $"Multiple users assigned to extension: {dup.ProfileExtension}",
-                NewState = "Only one user should have this extension",
+                IssueFound = $"Duplicate {numberLabel} Assignment",
+                CurrentState = $"Multiple users assigned to {numberLabel.ToLower()}: {dup.ProfileExtension}",
+                NewState = $"Only one user should have this {numberLabel.ToLower()}",
                 Severity = "High",
                 EntityType = "User",
                 EntityId = dup.UserId,
                 EntityName = dup.UserName ?? "",
-                Field = "Extension",
-                Recommendation = "Reassign extensions to ensure unique user-extension mappings",
+                Field = numberLabel,
+                Recommendation = $"Reassign {numberLabel.ToLower()}s to ensure unique user-{numberLabel.ToLower()} mappings",
                 SourceEndpoint = "/api/v2/users"
             });
         }
@@ -281,16 +380,16 @@ public sealed class ReportModule
         {
             issues.Add(new IssueRow
             {
-                IssueFound = "Duplicate Extension Record",
-                CurrentState = $"Multiple records for extension: {dup.ExtensionNumber}",
-                NewState = "Only one extension record should exist",
+                IssueFound = $"Duplicate {numberLabel} Record",
+                CurrentState = $"Multiple records for {numberLabel.ToLower()}: {dup.ExtensionNumber}",
+                NewState = $"Only one {numberLabel.ToLower()} record should exist",
                 Severity = "Critical",
-                EntityType = "Extension",
+                EntityType = entityType,
                 EntityId = dup.ExtensionId ?? "",
                 EntityName = dup.ExtensionNumber,
-                Field = "Extension Number",
-                Recommendation = "Remove duplicate extension records",
-                SourceEndpoint = "/api/v2/telephony/providers/edges/extensions"
+                Field = $"{numberLabel} Number",
+                Recommendation = $"Remove duplicate {numberLabel.ToLower()} records",
+                SourceEndpoint = endpoint
             });
         }
 
