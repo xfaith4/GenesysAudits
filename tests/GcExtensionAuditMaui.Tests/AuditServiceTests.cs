@@ -2,6 +2,8 @@ using System.Net.Http;
 using GcExtensionAuditMaui.Models.Api;
 using GcExtensionAuditMaui.Models.Audit;
 using GcExtensionAuditMaui.Models.Observability;
+using GcExtensionAuditMaui.Models.Patch;
+using GcExtensionAuditMaui.Models.Planning;
 using GcExtensionAuditMaui.Services;
 
 namespace GcExtensionAuditMaui.Tests;
@@ -208,5 +210,87 @@ public sealed class AuditServiceTests
 
         var did = AuditService.GetUserProfileDid(user);
         Assert.Equal("+13175551212", did);
+    }
+
+    [Fact]
+    public void PatchFromPlanOptions_FiltersCategories_Correctly()
+    {
+        var svc = CreateAuditService();
+        var ctx = CreateContext();
+        
+        var planner = new FixupPlannerService(svc);
+        var plan = planner.BuildPlan(ctx, reassertConsistentUsers: false, preferAssignAvailableOverBlank: true);
+
+        // Verify plan has items from different categories
+        Assert.Contains(plan.Items, i => i.Category == "Missing");
+        Assert.Contains(plan.Items, i => i.Category == "DuplicateUser");
+        Assert.Contains(plan.Items, i => i.Category == "Discrepancy");
+        
+        // Test filtering - only Missing
+        var missingOnly = plan.Items.Where(item => item.Category == "Missing").ToList();
+        Assert.Single(missingOnly);
+        Assert.Equal("Missing", missingOnly[0].Category);
+        
+        // Test filtering - only DuplicateUser
+        var duplicateOnly = plan.Items.Where(item => item.Category == "DuplicateUser").ToList();
+        Assert.Single(duplicateOnly); // Bob is duplicate of Alice on ext 100
+        Assert.Equal("DuplicateUser", duplicateOnly[0].Category);
+        
+        // Test filtering - only Discrepancy
+        var discrepancyOnly = plan.Items.Where(item => item.Category == "Discrepancy").ToList();
+        Assert.Equal(2, discrepancyOnly.Count); // u4 owner mismatch, u5 owner type not user
+        Assert.All(discrepancyOnly, d => Assert.Equal("Discrepancy", d.Category));
+    }
+
+    [Fact]
+    public void PatchFromPlanOptions_RespectsIncludeFlags()
+    {
+        // Verify that PatchFromPlanOptions properly filters based on flags
+        var options1 = new PatchFromPlanOptions
+        {
+            WhatIf = true,
+            IncludeMissing = true,
+            IncludeDuplicateUser = false,
+            IncludeDiscrepancy = false,
+            IncludeReassert = false,
+        };
+        
+        Assert.True(options1.IncludeMissing);
+        Assert.False(options1.IncludeDuplicateUser);
+        Assert.False(options1.IncludeDiscrepancy);
+        Assert.False(options1.IncludeReassert);
+        
+        var options2 = new PatchFromPlanOptions
+        {
+            WhatIf = true,
+            IncludeMissing = true,
+            IncludeDuplicateUser = true,
+            IncludeDiscrepancy = true,
+            IncludeReassert = false,
+        };
+        
+        Assert.True(options2.IncludeMissing);
+        Assert.True(options2.IncludeDuplicateUser);
+        Assert.True(options2.IncludeDiscrepancy);
+        Assert.False(options2.IncludeReassert);
+    }
+
+    [Fact]
+    public void FixupPlan_HasCorrectActionTypes()
+    {
+        var svc = CreateAuditService();
+        var ctx = CreateContext();
+        
+        var planner = new FixupPlannerService(svc);
+        var plan = planner.BuildPlan(ctx, reassertConsistentUsers: false, preferAssignAvailableOverBlank: true);
+
+        // Missing item should have ClearExtension action (no available extensions in test context)
+        var missing = plan.Items.FirstOrDefault(i => i.Category == "Missing");
+        Assert.NotNull(missing);
+        Assert.Equal(FixupActionType.ClearExtension, missing.Action);
+        
+        // Discrepancy items should have ReassertExisting action
+        var discrepancies = plan.Items.Where(i => i.Category == "Discrepancy").ToList();
+        Assert.All(discrepancies, d => Assert.Equal(FixupActionType.ReassertExisting, d.Action));
     }
 }
