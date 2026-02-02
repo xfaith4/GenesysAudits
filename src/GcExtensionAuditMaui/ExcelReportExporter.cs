@@ -1,88 +1,124 @@
-// ### BEGIN: JsonFlattening
+// ### BEGIN: ExcelReportExporter
 
-using System.Text.Json;
+using OfficeOpenXml;
 
-public static class JsonTableBuilder
+namespace GcExtensionAuditMaui;
+
+public static class ExcelReportExporter
 {
-    public static List<Dictionary<string, string>> BuildRows(IReadOnlyList<JsonElement> items, int maxDepth = 5)
+    public static void Export(string outputPath, IReadOnlyList<ApiSnapshot> snapshots, IReadOnlyList<IssueRow> issues)
     {
-        var rows = new List<Dictionary<string, string>>(items.Count);
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        
+        using var package = new ExcelPackage();
 
-        foreach (var el in items)
+        // Add a sheet for each API snapshot
+        foreach (var snapshot in snapshots)
         {
-            var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            if (el.ValueKind == JsonValueKind.Object)
-            {
-                FlattenObject(el, prefix: "", row, depth: 0, maxDepth);
-            }
-            else
-            {
-                row["value"] = ToScalar(el);
-            }
-
-            rows.Add(row);
+            AddSnapshotSheet(package, snapshot);
         }
 
-        return rows;
+        // Add issues sheet
+        if (issues.Count > 0)
+        {
+            AddIssuesSheet(package, issues);
+        }
+
+        // Save the Excel file
+        var file = new FileInfo(outputPath);
+        package.SaveAs(file);
     }
 
-    private static void FlattenObject(JsonElement obj, string prefix, Dictionary<string, string> row, int depth, int maxDepth)
+    private static void AddSnapshotSheet(ExcelPackage package, ApiSnapshot snapshot)
     {
-        foreach (var prop in obj.EnumerateObject())
+        var worksheet = package.Workbook.Worksheets.Add(snapshot.SheetName);
+        
+        // Flatten JSON items to rows
+        var rows = JsonTableBuilder.BuildRows(snapshot.Items);
+        if (rows.Count == 0)
         {
-            var key = string.IsNullOrEmpty(prefix) ? prop.Name : $"{prefix}.{prop.Name}";
-            var v = prop.Value;
+            worksheet.Cells[1, 1].Value = "No data";
+            return;
+        }
 
-            if (depth >= maxDepth)
+        // Get all unique column names
+        var allColumns = rows
+            .SelectMany(r => r.Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Write header row
+        for (int i = 0; i < allColumns.Count; i++)
+        {
+            worksheet.Cells[1, i + 1].Value = allColumns[i];
+        }
+
+        // Format header
+        using (var headerRange = worksheet.Cells[1, 1, 1, allColumns.Count])
+        {
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        }
+
+        // Write data rows
+        for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            var row = rows[rowIndex];
+            for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
             {
-                row[key] = ToScalarOrJson(v);
-                continue;
-            }
-
-            switch (v.ValueKind)
-            {
-                case JsonValueKind.Object:
-                    FlattenObject(v, key, row, depth + 1, maxDepth);
-                    break;
-
-                case JsonValueKind.Array:
-                    // Arrays become JSON string (keeps info without exploding columns)
-                    row[key] = v.GetRawText();
-                    break;
-
-                default:
-                    row[key] = ToScalar(v);
-                    break;
+                var columnName = allColumns[colIndex];
+                if (row.TryGetValue(columnName, out var value))
+                {
+                    worksheet.Cells[rowIndex + 2, colIndex + 1].Value = value;
+                }
             }
         }
+
+        // Auto-fit columns
+        worksheet.Cells.AutoFitColumns();
     }
 
-    private static string ToScalarOrJson(JsonElement v)
-        => (v.ValueKind == JsonValueKind.Object || v.ValueKind == JsonValueKind.Array)
-            ? v.GetRawText()
-            : ToScalar(v);
-
-    private static string ToScalar(JsonElement v)
+    private static void AddIssuesSheet(ExcelPackage package, IReadOnlyList<IssueRow> issues)
     {
-        try
+        var worksheet = package.Workbook.Worksheets.Add("Issues");
+
+        // Write header
+        var headers = new[] { "IssueFound", "CurrentState", "NewState", "Severity", "EntityType", "EntityId", "EntityName", "Field", "Recommendation", "SourceEndpoint" };
+        for (int i = 0; i < headers.Length; i++)
         {
-            return v.ValueKind switch
-            {
-                JsonValueKind.String => v.GetString() ?? "",
-                JsonValueKind.Number => v.TryGetInt64(out var i) ? i.ToString() : v.GetDouble().ToString("G"),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                JsonValueKind.Null => "",
-                JsonValueKind.Undefined => "",
-                _ => v.GetRawText()
-            };
+            worksheet.Cells[1, i + 1].Value = headers[i];
         }
-        catch
+
+        // Format header
+        using (var headerRange = worksheet.Cells[1, 1, 1, headers.Length])
         {
-            return v.GetRawText();
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
         }
+
+        // Write issue rows
+        for (int i = 0; i < issues.Count; i++)
+        {
+            var issue = issues[i];
+            var row = i + 2;
+            worksheet.Cells[row, 1].Value = issue.IssueFound;
+            worksheet.Cells[row, 2].Value = issue.CurrentState;
+            worksheet.Cells[row, 3].Value = issue.NewState;
+            worksheet.Cells[row, 4].Value = issue.Severity;
+            worksheet.Cells[row, 5].Value = issue.EntityType;
+            worksheet.Cells[row, 6].Value = issue.EntityId;
+            worksheet.Cells[row, 7].Value = issue.EntityName;
+            worksheet.Cells[row, 8].Value = issue.Field;
+            worksheet.Cells[row, 9].Value = issue.Recommendation;
+            worksheet.Cells[row, 10].Value = issue.SourceEndpoint;
+        }
+
+        // Auto-fit columns
+        worksheet.Cells.AutoFitColumns();
     }
 }
 
-// ### END: JsonFlattening
+// ### END: ExcelReportExporter

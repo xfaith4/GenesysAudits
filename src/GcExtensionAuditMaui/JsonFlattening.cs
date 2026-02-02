@@ -2,6 +2,8 @@
 
 using System.Text.Json;
 
+namespace GcExtensionAuditMaui;
+
 public static class JsonTableBuilder
 {
     public static List<Dictionary<string, string>> BuildRows(IReadOnlyList<JsonElement> items, int maxDepth = 5)
