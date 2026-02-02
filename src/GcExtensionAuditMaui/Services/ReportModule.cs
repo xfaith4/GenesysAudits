@@ -30,7 +30,7 @@ public sealed class ReportModule
         CancellationToken ct = default)
     {
         var outDir = _paths.GetNewOutputFolder();
-        var fileName = $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var fileName = GenerateExcelFileName();
         var outputPath = Path.Combine(outDir, fileName);
 
         await Task.Run(() =>
@@ -58,7 +58,7 @@ public sealed class ReportModule
         await _csvExporter.ExportDryRunCsvOnlyAsync(context, report, apiStats, outDir, ct);
 
         // Also export Excel version
-        var fileName = $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var fileName = GenerateExcelFileName();
         var excelPath = Path.Combine(outDir, fileName);
 
         await Task.Run(() =>
@@ -70,6 +70,11 @@ public sealed class ReportModule
 
         _log.Log(Models.Logging.LogLevel.Info, "Full audit report exported (CSV + Excel)", new { OutDir = outDir });
         return outDir;
+    }
+
+    private static string GenerateExcelFileName()
+    {
+        return $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
     }
 
     private static List<ApiSnapshot> BuildApiSnapshots(AuditContext context)
