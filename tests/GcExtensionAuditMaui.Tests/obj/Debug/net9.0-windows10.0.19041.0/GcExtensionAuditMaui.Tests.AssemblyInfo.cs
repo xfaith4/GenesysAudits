@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GcExtensionAuditMaui.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8840d8c4299d46133b2bc71216afdf7d8470c44d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4ab0f7769af661d71676bb98d4521b65169502b")]
 [assembly: System.Reflection.AssemblyProductAttribute("GcExtensionAuditMaui.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GcExtensionAuditMaui.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
