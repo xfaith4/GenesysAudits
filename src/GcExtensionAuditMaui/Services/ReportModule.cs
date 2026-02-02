@@ -21,6 +21,86 @@ public sealed class ReportModule
     }
 
     /// <summary>
+    /// Exports combined Extension and DID audit data into a single Excel workbook.
+    /// </summary>
+    public async Task<string> ExportCombinedAuditReportAsync(
+        AuditContext extensionContext,
+        AuditContext didContext,
+        DryRunReport extensionReport,
+        DryRunReport didReport,
+        ApiStats apiStats,
+        CancellationToken ct = default)
+    {
+        var outDir = _paths.GetNewOutputFolder();
+        var fileName = $"GenesysCombinedAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var outputPath = Path.Combine(outDir, fileName);
+
+        await Task.Run(() =>
+        {
+            var snapshots = new List<ApiSnapshot>();
+            var issues = new List<IssueRow>();
+
+            // Add Users snapshot (only once since same users for both audits)
+            if (extensionContext.Users.Count > 0)
+            {
+                var userElements = extensionContext.Users
+                    .Select(u => JsonSerializer.SerializeToElement(u))
+                    .ToList();
+                
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "Users",
+                    Endpoint = "/api/v2/users",
+                    Items = userElements
+                });
+            }
+
+            // Add Extensions snapshot
+            if (extensionContext.Extensions.Count > 0)
+            {
+                var extensionElements = extensionContext.Extensions
+                    .Select(e => JsonSerializer.SerializeToElement(e))
+                    .ToList();
+
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "Extensions",
+                    Endpoint = "/api/v2/telephony/providers/edges/extensions",
+                    Items = extensionElements
+                });
+            }
+
+            // Add DIDs snapshot
+            if (didContext.Extensions.Count > 0)
+            {
+                var didElements = didContext.Extensions
+                    .Select(e => JsonSerializer.SerializeToElement(e))
+                    .ToList();
+
+                snapshots.Add(new ApiSnapshot
+                {
+                    SheetName = "DIDs",
+                    Endpoint = "/api/v2/telephony/providers/edges/dids",
+                    Items = didElements
+                });
+            }
+
+            // Convert extension issues
+            var extensionIssues = ConvertReportToIssues(extensionContext, extensionReport);
+            issues.AddRange(extensionIssues);
+
+            // Convert DID issues
+            var didIssues = ConvertReportToIssues(didContext, didReport);
+            issues.AddRange(didIssues);
+
+            ExcelReportExporter.Export(outputPath, snapshots, issues);
+        }, ct);
+
+        _log.Log(Models.Logging.LogLevel.Info, "Combined audit report exported", new { OutDir = outDir, FileName = fileName });
+        return outDir;
+    }
+
+    /// <summary>
     /// Exports audit data in Excel format with API snapshots and issue tracking.
     /// </summary>
     public async Task<string> ExportExcelReportAsync(

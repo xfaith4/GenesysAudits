@@ -12,6 +12,20 @@ public sealed partial class ContextStore : ObservableObject
         set => SetProperty(ref _context, value);
     }
 
+    private AuditContext? _extensionContext;
+    public AuditContext? ExtensionContext
+    {
+        get => _extensionContext;
+        set => SetProperty(ref _extensionContext, value);
+    }
+
+    private AuditContext? _didContext;
+    public AuditContext? DidContext
+    {
+        get => _didContext;
+        set => SetProperty(ref _didContext, value);
+    }
+
     private ContextSummary? _summary;
     public ContextSummary? Summary
     {
@@ -29,6 +43,8 @@ public sealed partial class ContextStore : ObservableObject
     public void Clear()
     {
         Context = null;
+        ExtensionContext = null;
+        DidContext = null;
         Summary = null;
         LastOutputFolder = null;
     }
