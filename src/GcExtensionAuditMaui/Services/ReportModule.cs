@@ -109,7 +109,7 @@ public sealed class ReportModule
     {
         var issues = missingAssignments.Select(m => new IssueRow
         {
-            IssueFound = m.ProfileExtension + " - Missing Extension",
+            IssueFound = m.Issue,
             CurrentState = $"User: {m.UserEmail}, Extension: {m.ProfileExtension}",
             NewState = "Extension needs to be created or assigned",
             Severity = "High",
