@@ -52,8 +52,10 @@ public sealed class ReportModule
         ApiStats apiStats,
         CancellationToken ct = default)
     {
-        // Export CSV files using existing service
-        var outDir = await _csvExporter.ExportDryRunAsync(context, report, apiStats, ct);
+        var outDir = _paths.GetNewOutputFolder();
+
+        // Export CSV files
+        await _csvExporter.ExportDryRunCsvOnlyAsync(context, report, apiStats, outDir, ct);
 
         // Also export Excel version
         var fileName = $"GenesysExtensionAudit_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
