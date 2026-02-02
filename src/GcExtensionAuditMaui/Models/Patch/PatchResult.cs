@@ -15,6 +15,10 @@ public sealed class PatchSummary
     public int Skipped { get; init; }
     public int Failed { get; init; }
     public bool WhatIf { get; init; }
+    
+    // For PatchFromPlan
+    public int TotalPlanItems { get; init; }
+    public int ItemsTargeted { get; init; }
 }
 
 public sealed class PatchUpdatedRow

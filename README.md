@@ -84,12 +84,33 @@ Alternative (default publish folder):
 
 1) **Execute patch**
 
+- Two patch modes available:
+  - **PatchMissing** (legacy): Only fixes missing extension assignments
+  - **PatchPlan** (comprehensive): Fixes all selected issue types from the plan
+
+- **PatchPlan (Comprehensive)** features:
+  - **Category Selection**: Choose which issue types to fix:
+    - ☑️ Missing Extensions - Users with profile extension but no extension record exists
+    - ☑️ Duplicate Users - Multiple users assigned to the same extension
+    - ☑️ Discrepancies - Extension record exists but wrong owner/type mismatch
+    - ☐ Reassert Consistent - Optional: Reassert users that look consistent (for sync verification)
+  - **Double Verification**: When running real changes (WhatIf=false):
+    - First confirmation dialog: Warns about applying REAL changes
+    - Second confirmation dialog: FINAL warning before execution
+    - Must type `PATCH` in the confirmation field
+  - **Selective Fixing**: Can fix one issue type at a time or any combination
+  - **Action Types Supported**:
+    - `ReassertExisting` - Affirm/sync the current extension (for discrepancies)
+    - `AssignSpecific` - Set a new extension (for duplicates/missing with available extensions)
+    - `ClearExtension` - Blank the profile extension (when no better option available)
+
 - Options:
-  - `WhatIf` (default true)
+  - `WhatIf` (default true) - Preview changes without applying them
   - Sleep (ms) between updates (default 150)
   - MaxUpdates (0 = unlimited)
   - MaxFailures (0 = unlimited)
   - Confirm text (must type `PATCH` when `WhatIf=false`)
+  
 - Patch semantics (matches PowerShell module intent):
   - `GET /api/v2/users/{id}`
   - Ensure a WORK PHONE address exists (creates one if absent)

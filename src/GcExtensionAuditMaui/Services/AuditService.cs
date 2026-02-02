@@ -875,4 +875,170 @@ public sealed class AuditService
         addresses.Add(new GcUserAddress { MediaType = "PHONE", Type = "WORK", Extension = null });
         idx = addresses.Count - 1;
     }
+
+    public async Task<PatchResult> PatchFromPlanAsync(
+        AuditContext context,
+        Models.Planning.FixupPlan plan,
+        PatchFromPlanOptions options,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        // Filter plan items based on category selection
+        var targetItems = plan.Items.Where(item =>
+        {
+            return item.Category switch
+            {
+                "Missing" => options.IncludeMissing,
+                "DuplicateUser" => options.IncludeDuplicateUser,
+                "Discrepancy" => options.IncludeDiscrepancy,
+                "Reassert" => options.IncludeReassert,
+                _ => false
+            };
+        }).ToList();
+
+        var updated = new List<PatchUpdatedRow>();
+        var skipped = new List<PatchSkippedRow>();
+        var failed = new List<PatchFailedRow>();
+
+        var done = 0;
+        var i = 0;
+
+        foreach (var item in targetItems)
+        {
+            ct.ThrowIfCancellationRequested();
+            i++;
+
+            if (options.MaxFailures > 0 && failed.Count >= options.MaxFailures)
+            {
+                // Skip all remaining items
+                foreach (var rest in targetItems.Skip(i - 1))
+                {
+                    skipped.Add(new PatchSkippedRow
+                    {
+                        Reason = "MaxFailuresReached",
+                        UserId = rest.UserId,
+                        User = rest.User ?? rest.UserId,
+                        Extension = rest.CurrentExtension ?? "",
+                    });
+                }
+                break;
+            }
+
+            if (options.MaxUpdates > 0 && done >= options.MaxUpdates)
+            {
+                skipped.Add(new PatchSkippedRow
+                {
+                    Reason = "MaxUpdatesReached",
+                    UserId = item.UserId,
+                    User = item.User ?? item.UserId,
+                    Extension = item.CurrentExtension ?? "",
+                });
+                continue;
+            }
+
+            // Determine the target extension based on the action
+            string? targetExtension = item.Action switch
+            {
+                Models.Planning.FixupActionType.ReassertExisting => item.CurrentExtension,
+                Models.Planning.FixupActionType.AssignSpecific => item.RecommendedExtension,
+                Models.Planning.FixupActionType.ClearExtension => null,
+                _ => null
+            };
+
+            progress?.Report($"Patching {i}/{targetItems.Count}: {item.User ?? item.UserId} [{item.Category}]");
+
+            try
+            {
+                var user = await _api.GetUserAsync(context.ApiBaseUri, context.AccessToken, item.UserId, ct).ConfigureAwait(false);
+                if (user?.Id is null) { throw new InvalidOperationException($"Failed to GET user {item.UserId}."); }
+
+                var addresses = user.Addresses is null ? new List<GcUserAddress>() : CloneAddresses(user.Addresses);
+                EnsureWorkPhoneAddress(addresses, out var idx);
+
+                var before = addresses[idx].Extension;
+                addresses[idx].Extension = targetExtension;
+
+                _log.Log(LogLevel.Info, "Preparing user extension PATCH", new
+                {
+                    UserId = item.UserId,
+                    Category = item.Category,
+                    Action = item.Action.ToString(),
+                    Before = before,
+                    After = targetExtension ?? "(null)"
+                });
+
+                var version = user.Version + 1;
+
+                if (options.WhatIf)
+                {
+                    updated.Add(new PatchUpdatedRow
+                    {
+                        UserId = item.UserId,
+                        User = item.User ?? item.UserId,
+                        Extension = targetExtension ?? "(cleared)",
+                        Status = "WhatIf",
+                        PatchedVersion = version,
+                    });
+                    done++;
+                    continue;
+                }
+
+                var patch = new GcUserPatch
+                {
+                    Version = version,
+                    Addresses = addresses,
+                };
+
+                await _api.PatchUserAsync(context.ApiBaseUri, context.AccessToken, item.UserId, patch, ct).ConfigureAwait(false);
+
+                updated.Add(new PatchUpdatedRow
+                {
+                    UserId = item.UserId,
+                    User = item.User ?? item.UserId,
+                    Extension = targetExtension ?? "(cleared)",
+                    Status = "Patched",
+                    PatchedVersion = version,
+                });
+
+                done++;
+                if (options.SleepMsBetween > 0)
+                {
+                    await Task.Delay(options.SleepMsBetween, ct).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                failed.Add(new PatchFailedRow
+                {
+                    UserId = item.UserId,
+                    User = item.User ?? item.UserId,
+                    Extension = item.CurrentExtension ?? "",
+                    Error = ex.Message,
+                });
+                _log.Log(LogLevel.Error, "Patch from plan failed", new
+                {
+                    UserId = item.UserId,
+                    Category = item.Category,
+                    Extension = item.CurrentExtension,
+                    Error = ex.Message
+                }, ex: ex);
+            }
+        }
+
+        return new PatchResult
+        {
+            Summary = new PatchSummary
+            {
+                TotalPlanItems = plan.Items.Count,
+                ItemsTargeted = targetItems.Count,
+                Updated = updated.Count,
+                Skipped = skipped.Count,
+                Failed = failed.Count,
+                WhatIf = options.WhatIf,
+            },
+            Updated = updated,
+            Skipped = skipped,
+            Failed = failed,
+        };
+    }
 }

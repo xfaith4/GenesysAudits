@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.PatchPlanPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:patch="clr-namespace:GcExtensionAuditMaui.Models.Patch"
+    xmlns:planning="clr-namespace:GcExtensionAuditMaui.Models.Planning"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:PatchPlanViewModel"
+    Title="Patch Plan">
+
+    <VerticalStackLayout Padding="12" Spacing="10">
+        <Frame BorderColor="#E5E7EB" BackgroundColor="#F9FAFB" Padding="10">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="⚠️ Comprehensive Patch - Select Issue Types to Fix" FontAttributes="Bold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="15" RowSpacing="10">
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
+                        <CheckBox IsChecked="{Binding IncludeMissing}" />
+                        <Label Text="Missing Extensions" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="1" Spacing="8">
+                        <CheckBox IsChecked="{Binding IncludeDuplicateUser}" />
+                        <Label Text="Duplicate Users" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="2" Spacing="8">
+                        <CheckBox IsChecked="{Binding IncludeDiscrepancy}" />
+                        <Label Text="Discrepancies" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="3" Spacing="8">
+                        <CheckBox IsChecked="{Binding IncludeReassert}" />
+                        <Label Text="Reassert Consistent" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <Button Grid.Row="1" Grid.Column="0" Text="Generate Plan" Command="{Binding GeneratePlanCommand}" />
+                </Grid>
+
+                <Label Text="{Binding PlanSummaryText}" FontSize="12" TextColor="#6B7280" LineBreakMode="WordWrap" />
+
+                <Label Text="Plan Items (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <ScrollView Orientation="Horizontal">
+                    <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
+                        <Grid Grid.Row="0" ColumnDefinitions="140,200,260,120,120,140,*" Padding="6" BackgroundColor="#F3F4F6">
+                            <Label Grid.Column="0" Text="Category" FontAttributes="Bold" />
+                            <Label Grid.Column="1" Text="Action" FontAttributes="Bold" />
+                            <Label Grid.Column="2" Text="User" FontAttributes="Bold" />
+                            <Label Grid.Column="3" Text="Current Ext" FontAttributes="Bold" />
+                            <Label Grid.Column="4" Text="Target Ext" FontAttributes="Bold" />
+                            <Label Grid.Column="5" Text="User ID" FontAttributes="Bold" />
+                            <Label Grid.Column="6" Text="Notes" FontAttributes="Bold" />
+                        </Grid>
+
+                        <CollectionView Grid.Row="1" ItemsSource="{Binding PlanItems}" HeightRequest="200">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="planning:FixupItem">
+                                    <Grid ColumnDefinitions="140,200,260,120,120,140,400" Padding="6">
+                                        <Label Grid.Column="0" Text="{Binding Category}" />
+                                        <Label Grid.Column="1" Text="{Binding Action}" />
+                                        <Label Grid.Column="2" Text="{Binding User}" />
+                                        <Label Grid.Column="3" Text="{Binding CurrentExtension}" />
+                                        <Label Grid.Column="4" Text="{Binding RecommendedExtension}" />
+                                        <Label Grid.Column="5" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                                        <Label Grid.Column="6" Text="{Binding Notes}" LineBreakMode="TailTruncation" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Grid>
+                </ScrollView>
+            </VerticalStackLayout>
+        </Frame>
+
+        <Frame BorderColor="#E5E7EB" BackgroundColor="#FFF3CD" Padding="10">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="⚠️ Patch Execution Settings" FontAttributes="Bold" FontSize="14" />
+                
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                    <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="8">
+                        <Switch IsToggled="{Binding WhatIf}" />
+                        <Label Text="WhatIf" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <Label Grid.Row="0" Grid.Column="2" Text="Sleep (ms)" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="3" Text="{Binding SleepMsBetween}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Label Grid.Row="0" Grid.Column="4" Text="Max updates" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="5" Text="{Binding MaxUpdates}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Label Grid.Row="0" Grid.Column="6" Text="Max failures" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="0" Grid.Column="7" Text="{Binding MaxFailures}" Keyboard="Numeric" WidthRequest="90" />
+
+                    <Button Grid.Row="0" Grid.Column="9" Text="⚠️ RUN PATCH" Command="{Binding RunPatchCommand}" BackgroundColor="#DC2626" TextColor="White" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Confirm" VerticalTextAlignment="Center" />
+                    <Entry Grid.Row="1" Grid.Column="1" Text="{Binding ConfirmText}" WidthRequest="140" />
+                    <Label Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7" Text="⚠️ For REAL changes: uncheck WhatIf, type PATCH, and confirm TWICE." FontSize="12" TextColor="#DC2626" FontAttributes="Bold" VerticalTextAlignment="Center" />
+                </Grid>
+            </VerticalStackLayout>
+        </Frame>
+
+        <HorizontalStackLayout Spacing="10">
+            <Button Text="Cancel" Command="{Binding CancelCommand}" />
+            <Button Text="Open Out" Command="{Binding OpenOutCommand}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding StatusText}" VerticalTextAlignment="Center" />
+        </HorizontalStackLayout>
+
+        <Editor Text="{Binding SummaryText}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="80" />
+        <Label Text="{Binding LastExportFolder}" FontSize="12" TextColor="#6B7280" />
+
+        <Label Text="Updated" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Updated}" HeightRequest="120">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchUpdatedRow">
+                    <Grid ColumnDefinitions="220,140,120,200" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding User}" />
+                        <Label Grid.Column="1" Text="{Binding Extension}" />
+                        <Label Grid.Column="2" Text="{Binding Status}" />
+                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Text="Skipped" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Skipped}" HeightRequest="120">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchSkippedRow">
+                    <Grid ColumnDefinitions="200,220,140,200" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding Reason}" />
+                        <Label Grid.Column="1" Text="{Binding User}" />
+                        <Label Grid.Column="2" Text="{Binding Extension}" />
+                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Text="Failed" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding Failed}" HeightRequest="120">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="patch:PatchFailedRow">
+                    <Grid ColumnDefinitions="220,140,400" Padding="6">
+                        <Label Grid.Column="0" Text="{Binding User}" />
+                        <Label Grid.Column="1" Text="{Binding Extension}" />
+                        <Label Grid.Column="2" Text="{Binding Error}" LineBreakMode="TailTruncation" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </VerticalStackLayout>
+</ContentPage>

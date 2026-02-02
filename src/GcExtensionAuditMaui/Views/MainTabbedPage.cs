@@ -10,6 +10,7 @@ public sealed class MainTabbedPage : TabbedPage
         DuplicateUsersPage dupUsers,
         DuplicateExtensionsPage dupExts,
         PatchMissingPage patch,
+        PatchPlanPage patchPlan,
         LogPage log)
     {
         Children.Add(home);
@@ -19,6 +20,7 @@ public sealed class MainTabbedPage : TabbedPage
         Children.Add(dupUsers);
         Children.Add(dupExts);
         Children.Add(patch);
+        Children.Add(patchPlan);
         Children.Add(log);
     }
 }
