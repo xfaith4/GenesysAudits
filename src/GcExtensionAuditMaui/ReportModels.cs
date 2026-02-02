@@ -1,5 +1,7 @@
 // ### BEGIN: ReportModels
 
+namespace GcExtensionAuditMaui;
+
 public sealed class ApiSnapshot
 {
     public required string SheetName { get; init; }      // "Users", "Extensions", etc.

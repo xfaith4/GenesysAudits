@@ -29,6 +29,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<PlatformOpenService>();
         builder.Services.AddSingleton<DialogService>();
         builder.Services.AddSingleton<ExportService>();
+        builder.Services.AddSingleton<ReportModule>();
         builder.Services.AddSingleton<ContextStore>();
         builder.Services.AddSingleton<FixupPlannerService>();
 

@@ -33,6 +33,41 @@ public sealed class ExportService
         return outDir;
     }
 
+    internal async Task<string> ExportDryRunCsvOnlyAsync(AuditContext context, DryRunReport report, ApiStats apiStats, string outDir, CancellationToken ct)
+    {
+        // Internal method for ReportModule to call for CSV export only
+        await WriteCsvAsync(report.Rows, Path.Combine(outDir, "DryRun.csv"), ct);
+        await WriteCsvAsync(report.MissingAssignments, Path.Combine(outDir, "Missing.csv"), ct);
+        await WriteCsvAsync(report.Discrepancies, Path.Combine(outDir, "Discrepancies.csv"), ct);
+        await WriteCsvAsync(report.DuplicateUserAssignments, Path.Combine(outDir, "DuplicatesUsers.csv"), ct);
+        await WriteCsvAsync(report.DuplicateExtensionRecords, Path.Combine(outDir, "DuplicatesExtensions.csv"), ct);
+        await WriteSnapshotAsync(context, apiStats, Path.Combine(outDir, "Snapshot.json"), ct);
+        return outDir;
+    }
+
+    internal static async Task WriteSnapshotAsync(AuditContext context, ApiStats apiStats, string path, CancellationToken ct)
+    {
+        var summary = new ContextSummary
+        {
+            AuditKind = context.AuditKind,
+            UsersTotal = context.Users.Count,
+            UsersWithProfileExtension = context.UsersWithProfileExtension.Count,
+            DistinctProfileExtensions = context.ProfileExtensionNumbers.Count,
+            ExtensionsLoaded = context.Extensions.Count,
+            ExtensionMode = context.ExtensionMode,
+        };
+
+        var payload = new
+        {
+            GeneratedAt = DateTime.Now.ToString("O"),
+            ContextSummary = summary,
+            ApiStats = apiStats.ToSnapshotObject(),
+        };
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        await File.WriteAllTextAsync(path, json, Encoding.UTF8, ct);
+    }
+
     public async Task<string> ExportRowsAsync<T>(AuditContext context, IEnumerable<T> rows, string fileName, ApiStats apiStats, CancellationToken ct)
     {
         var outDir = _paths.GetNewOutputFolder();
@@ -57,30 +92,7 @@ public sealed class ExportService
         return outDir;
     }
 
-    private static async Task WriteSnapshotAsync(AuditContext context, ApiStats apiStats, string path, CancellationToken ct)
-    {
-        var summary = new ContextSummary
-        {
-            AuditKind = context.AuditKind,
-            UsersTotal = context.Users.Count,
-            UsersWithProfileExtension = context.UsersWithProfileExtension.Count,
-            DistinctProfileExtensions = context.ProfileExtensionNumbers.Count,
-            ExtensionsLoaded = context.Extensions.Count,
-            ExtensionMode = context.ExtensionMode,
-        };
-
-        var payload = new
-        {
-            GeneratedAt = DateTime.Now.ToString("O"),
-            ContextSummary = summary,
-            ApiStats = apiStats.ToSnapshotObject(),
-        };
-
-        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
-        await File.WriteAllTextAsync(path, json, Encoding.UTF8, ct);
-    }
-
-    private static async Task WriteCsvAsync<T>(IEnumerable<T> rows, string path, CancellationToken ct)
+    internal static async Task WriteCsvAsync<T>(IEnumerable<T> rows, string path, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
