@@ -40,4 +40,4 @@ _ReSharper*/
 !**/packages/build/
 
 # Output folders
-dist/
+#dist/
