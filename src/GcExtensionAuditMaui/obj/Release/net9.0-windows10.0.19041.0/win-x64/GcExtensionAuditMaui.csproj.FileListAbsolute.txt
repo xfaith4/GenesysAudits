@@ -510,3 +510,14 @@ G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\ob
 G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\obj\Release\net9.0-windows10.0.19041.0\win-x64\qualifiers.txt
 G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\obj\Release\net9.0-windows10.0.19041.0\win-x64\qualifiers.txt.intermediate
 G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\obj\Release\net9.0-windows10.0.19041.0\win-x64\MultipleQualifiersPerDimensionFound.txt
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\EPPlus.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\EPPlus.Interfaces.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\EPPlus.System.Drawing.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.Configuration.FileExtensions.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.Configuration.Json.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.FileProviders.Abstractions.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.FileProviders.Physical.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.FileSystemGlobbing.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\Microsoft.Win32.SystemEvents.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\System.Drawing.Common.dll
+G:\Development\20_Staging\GenesysCloud\GenesysAudits\src\GcExtensionAuditMaui\bin\Release\net9.0-windows10.0.19041.0\win-x64\System.Security.Cryptography.Pkcs.dll
