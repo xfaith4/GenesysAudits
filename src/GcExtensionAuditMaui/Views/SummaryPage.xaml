@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GcExtensionAuditMaui.Views.SummaryPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:summary="clr-namespace:GcExtensionAuditMaui.Models.Summary"
+    xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
+    x:DataType="vm:SummaryViewModel"
+    Title="Summary">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="20">
+
+            <!-- Header and Generate Button -->
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                <Label Grid.Column="0" Text="Issue Summary Dashboard" FontSize="24" FontAttributes="Bold" VerticalOptions="Center" />
+                <Button Grid.Column="1" Text="Generate Summary" Command="{Binding GenerateSummaryCommand}" />
+                <ActivityIndicator Grid.Column="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                <Button Grid.Column="3" Text="Close" Clicked="OnCloseClicked" />
+            </Grid>
+
+            <!-- Executive Overview Section -->
+            <Frame BorderColor="#DADDE2" BackgroundColor="#F9FAFB" Padding="16" CornerRadius="8">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Executive Overview" FontSize="18" FontAttributes="Bold" TextColor="#111827" />
+                    <Label Text="{Binding ExecutiveOverview}" 
+                           LineBreakMode="WordWrap" 
+                           FontSize="14" 
+                           TextColor="#374151" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Key Metrics Section -->
+            <Frame BorderColor="#DADDE2" BackgroundColor="White" Padding="16" CornerRadius="8">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Key Metrics" FontSize="18" FontAttributes="Bold" TextColor="#111827" />
+                    <Label Text="{Binding KeyMetrics}" 
+                           LineBreakMode="WordWrap" 
+                           FontSize="14" 
+                           TextColor="#374151"
+                           FontFamily="Courier New" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Pivot Table Section -->
+            <Frame BorderColor="#DADDE2" BackgroundColor="White" Padding="16" CornerRadius="8">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Issue Breakdown (Pivot Table)" FontSize="18" FontAttributes="Bold" TextColor="#111827" />
+                    
+                    <!-- Table Header -->
+                    <Grid ColumnDefinitions="2*,*,*,*,*" 
+                          Padding="8" 
+                          BackgroundColor="#F3F4F6"
+                          ColumnSpacing="8">
+                        <Label Grid.Column="0" Text="Issue Category" FontAttributes="Bold" FontSize="13" />
+                        <Label Grid.Column="1" Text="Open" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="2" Text="Closed" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="3" Text="Total" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
+                        <Label Grid.Column="4" Text="Severity" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="Center" />
+                    </Grid>
+
+                    <!-- Table Rows -->
+                    <CollectionView ItemsSource="{Binding PivotTableRows}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="summary:PivotTableRow">
+                                <Grid ColumnDefinitions="2*,*,*,*,*" 
+                                      Padding="8,12" 
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="{Binding Category}" FontSize="13" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="{Binding OpenCount}" FontSize="13" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                    <Label Grid.Column="2" Text="{Binding ClosedCount}" FontSize="13" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                    <Label Grid.Column="3" Text="{Binding TotalCount}" FontSize="13" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                    <Frame Grid.Column="4" 
+                                           Padding="6,2" 
+                                           CornerRadius="4" 
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center"
+                                           HasShadow="False"
+                                           BorderColor="Transparent">
+                                        <Frame.Triggers>
+                                            <DataTrigger TargetType="Frame" Binding="{Binding Severity}" Value="High">
+                                                <Setter Property="BackgroundColor" Value="#FEE2E2" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Frame" Binding="{Binding Severity}" Value="Medium">
+                                                <Setter Property="BackgroundColor" Value="#FEF3C7" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Frame" Binding="{Binding Severity}" Value="Low">
+                                                <Setter Property="BackgroundColor" Value="#DBEAFE" />
+                                            </DataTrigger>
+                                        </Frame.Triggers>
+                                        <Label Text="{Binding Severity}" FontSize="11" HorizontalOptions="Center">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Severity}" Value="High">
+                                                    <Setter Property="TextColor" Value="#991B1B" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Severity}" Value="Medium">
+                                                    <Setter Property="TextColor" Value="#92400E" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Severity}" Value="Low">
+                                                    <Setter Property="TextColor" Value="#1E40AF" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </Frame>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Bar Chart Section -->
+            <Frame BorderColor="#DADDE2" BackgroundColor="White" Padding="16" CornerRadius="8">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Issue Type Visualization" FontSize="18" FontAttributes="Bold" TextColor="#111827" />
+                    <Label Text="Issues by category (sorted by count, highest first)" FontSize="12" TextColor="#6B7280" />
+                    
+                    <!-- Horizontal Bar Chart -->
+                    <VerticalStackLayout Spacing="8" Margin="0,8,0,0">
+                        <CollectionView ItemsSource="{Binding ChartDataPoints}">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="summary:ChartDataPoint">
+                                    <VerticalStackLayout Spacing="4" Margin="0,0,0,12">
+                                        <!-- Category Label -->
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding Category}" 
+                                                   FontSize="13" 
+                                                   VerticalOptions="Center"
+                                                   WidthRequest="200"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Count}" 
+                                                   FontSize="13" 
+                                                   FontAttributes="Bold"
+                                                   VerticalOptions="Center"
+                                                   WidthRequest="50" />
+                                        </HorizontalStackLayout>
+                                        
+                                        <!-- Bar -->
+                                        <HorizontalStackLayout>
+                                            <BoxView HeightRequest="24" 
+                                                     WidthRequest="{Binding BarWidth}"
+                                                     CornerRadius="4"
+                                                     VerticalOptions="Center">
+                                                <BoxView.Triggers>
+                                                    <DataTrigger TargetType="BoxView" Binding="{Binding IsHighPriority}" Value="True">
+                                                        <Setter Property="Color" Value="#EF4444" />
+                                                    </DataTrigger>
+                                                    <DataTrigger TargetType="BoxView" Binding="{Binding IsHighPriority}" Value="False">
+                                                        <Setter Property="Color" Value="#3B82F6" />
+                                                    </DataTrigger>
+                                                </BoxView.Triggers>
+                                            </BoxView>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+
+                    <!-- Legend -->
+                    <HorizontalStackLayout Spacing="20" Margin="0,8,0,0">
+                        <HorizontalStackLayout Spacing="6">
+                            <BoxView Color="#EF4444" WidthRequest="16" HeightRequest="16" CornerRadius="2" />
+                            <Label Text="Top Priority Issues" FontSize="11" TextColor="#6B7280" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Spacing="6">
+                            <BoxView Color="#3B82F6" WidthRequest="16" HeightRequest="16" CornerRadius="2" />
+                            <Label Text="Other Issues" FontSize="11" TextColor="#6B7280" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Footer Note -->
+            <Label Text="Professional summary page with pivot table and bar chart visualization" 
+                   FontSize="11" 
+                   TextColor="#9CA3AF" 
+                   HorizontalTextAlignment="Center"
+                   Margin="0,8,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

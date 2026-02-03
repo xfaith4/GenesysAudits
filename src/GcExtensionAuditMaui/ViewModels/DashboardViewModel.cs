@@ -7,6 +7,7 @@ using GcExtensionAuditMaui.Models.Planning;
 using GcExtensionAuditMaui.Models.Patch;
 using GcExtensionAuditMaui.Services;
 using GcExtensionAuditMaui.Utilities;
+using GcExtensionAuditMaui.Views;
 using Microsoft.Maui.Storage;
 using System.Text;
 using System.Text.Json;
@@ -23,6 +24,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     private readonly DialogService _dialogs;
     private readonly PlatformOpenService _open;
     private readonly LoggingService _log;
+    private readonly IServiceProvider _services;
 
     private CancellationTokenSource? _cts;
     private FixupPlan? _plan;
@@ -35,7 +37,8 @@ public sealed partial class DashboardViewModel : ObservableObject
         ContextStore store,
         DialogService dialogs,
         PlatformOpenService open,
-        LoggingService log)
+        LoggingService log,
+        IServiceProvider services)
     {
         _audit = audit;
         _planner = planner;
@@ -45,6 +48,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         _dialogs = dialogs;
         _open = open;
         _log = log;
+        _services = services;
 
         AuditKind = (AuditNumberKind)Preferences.Get(nameof(AuditKind), (int)AuditNumberKind.Extension);
         RunBothAudits = Preferences.Get(nameof(RunBothAudits), false);
@@ -897,6 +901,21 @@ public sealed partial class DashboardViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(_store.LastOutputFolder))
         {
             await _open.OpenFolderAsync(_store.LastOutputFolder);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ViewSummaryAsync()
+    {
+        try
+        {
+            var summaryPage = _services.GetRequiredService<SummaryPage>();
+            await Application.Current.MainPage.Navigation.PushModalAsync(summaryPage);
+        }
+        catch (Exception ex)
+        {
+            _log.Log(LogLevel.Error, "Failed to show summary page", ex: ex);
+            await _dialogs.AlertAsync("Error", $"Failed to open summary page: {ex.Message}");
         }
     }
 
