@@ -51,12 +51,24 @@
                     <Grid ColumnDefinitions="2*,*,*,*,*" 
                           Padding="8" 
                           BackgroundColor="#F3F4F6"
-                          ColumnSpacing="8">
-                        <Label Grid.Column="0" Text="Issue Category" FontAttributes="Bold" FontSize="13" />
-                        <Label Grid.Column="1" Text="Open" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
-                        <Label Grid.Column="2" Text="Closed" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
-                        <Label Grid.Column="3" Text="Total" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" />
-                        <Label Grid.Column="4" Text="Severity" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="Center" />
+                          ColumnSpacing="8"
+                          AutomationProperties.IsInAccessibleTree="True"
+                          AutomationProperties.Name="Pivot table header">
+                        <Label Grid.Column="0" Text="Issue Category" FontAttributes="Bold" FontSize="13" 
+                               AutomationProperties.IsInAccessibleTree="True" 
+                               AutomationProperties.Name="Issue Category column header" />
+                        <Label Grid.Column="1" Text="Open" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" 
+                               AutomationProperties.IsInAccessibleTree="True" 
+                               AutomationProperties.Name="Open issues column header" />
+                        <Label Grid.Column="2" Text="Closed" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" 
+                               AutomationProperties.IsInAccessibleTree="True" 
+                               AutomationProperties.Name="Closed issues column header" />
+                        <Label Grid.Column="3" Text="Total" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="End" 
+                               AutomationProperties.IsInAccessibleTree="True" 
+                               AutomationProperties.Name="Total issues column header" />
+                        <Label Grid.Column="4" Text="Severity" FontAttributes="Bold" FontSize="13" HorizontalTextAlignment="Center" 
+                               AutomationProperties.IsInAccessibleTree="True" 
+                               AutomationProperties.Name="Severity column header" />
                     </Grid>
 
                     <!-- Table Rows -->
