@@ -39,6 +39,7 @@
                             <Label Text="Both" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </Frame>
+                    <Button Text="Summary" Command="{Binding ViewSummaryCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="10,8" />
                     <Button Text="Export" Command="{Binding ExportAuditReportCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
                     <Button Text="Open Out" Command="{Binding OpenOutCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
                 </HorizontalStackLayout>
