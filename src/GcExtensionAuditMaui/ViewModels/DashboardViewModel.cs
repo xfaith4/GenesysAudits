@@ -8,6 +8,7 @@ using GcExtensionAuditMaui.Models.Patch;
 using GcExtensionAuditMaui.Services;
 using GcExtensionAuditMaui.Utilities;
 using GcExtensionAuditMaui.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Storage;
 using System.Text;
 using System.Text.Json;
