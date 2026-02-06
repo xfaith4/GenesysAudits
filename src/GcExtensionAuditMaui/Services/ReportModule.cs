@@ -400,7 +400,9 @@ public sealed class ReportModule
             {
                 "NoLocationAssigned" => "User has no location assigned",
                 "NoDefaultStationAssigned" => "User has no default station assigned",
-                "NoTokenIssuedInLast90Days" => "User has not logged in within the last 90 days",
+                "NoTokenIssuedInLast90Days" => userIssue.DateLastLogin.HasValue 
+                    ? "User has not logged in within the last 90 days" 
+                    : "User has never logged in",
                 _ => userIssue.Issue
             };
 

@@ -414,48 +414,37 @@ public sealed class AuditService
             // Check for missing location
             if (user.Locations is null || user.Locations.Count == 0)
             {
-                rows.Add(new UserIssueRow
-                {
-                    Issue = "NoLocationAssigned",
-                    UserId = user.Id,
-                    UserName = user.Name,
-                    UserEmail = user.Email,
-                    UserState = user.State,
-                    DateLastLogin = user.DateLastLogin,
-                });
+                rows.Add(CreateUserIssue("NoLocationAssigned", user));
             }
 
             // Check for missing default station
             if (user.Station is null || string.IsNullOrWhiteSpace(user.Station.Id))
             {
-                rows.Add(new UserIssueRow
-                {
-                    Issue = "NoDefaultStationAssigned",
-                    UserId = user.Id,
-                    UserName = user.Name,
-                    UserEmail = user.Email,
-                    UserState = user.State,
-                    DateLastLogin = user.DateLastLogin,
-                });
+                rows.Add(CreateUserIssue("NoDefaultStationAssigned", user));
             }
 
-            // Check for token not issued in last 90 days
+            // Check for token not issued in last 90 days (or never logged in)
             if (user.DateLastLogin is null || user.DateLastLogin.Value < ninetyDaysAgo)
             {
-                rows.Add(new UserIssueRow
-                {
-                    Issue = "NoTokenIssuedInLast90Days",
-                    UserId = user.Id,
-                    UserName = user.Name,
-                    UserEmail = user.Email,
-                    UserState = user.State,
-                    DateLastLogin = user.DateLastLogin,
-                });
+                rows.Add(CreateUserIssue("NoTokenIssuedInLast90Days", user));
             }
         }
 
         _log.Log(LogLevel.Info, "User issues found", new { Count = rows.Count });
         return rows;
+    }
+
+    private static UserIssueRow CreateUserIssue(string issue, GcUser user)
+    {
+        return new UserIssueRow
+        {
+            Issue = issue,
+            UserId = user.Id!,
+            UserName = user.Name,
+            UserEmail = user.Email,
+            UserState = user.State,
+            DateLastLogin = user.DateLastLogin,
+        };
     }
 
     public DryRunReport NewDryRunReport(AuditContext context)

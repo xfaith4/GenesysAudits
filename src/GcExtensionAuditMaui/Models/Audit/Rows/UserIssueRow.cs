@@ -1,4 +1,4 @@
-namespace GcExtensionAuditMaui.Models.Audit.Rows;
+namespace GcExtensionAuditMaui.Models.Audit;
 
 public sealed class UserIssueRow
 {
