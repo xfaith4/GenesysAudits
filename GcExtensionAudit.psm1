@@ -303,7 +303,7 @@ function Invoke-GcApi {
   # Changed: Add TimeoutSec parameter (default 120)
   # - Support -TimeoutSec parameter and pass to Invoke-WebRequest
   # - Ensure -UseBasicParsing is used for PowerShell 5.1 compatibility
-  
+
   [CmdletBinding()]
   param(
     [Parameter(Mandatory)] [ValidateSet('GET','POST','PUT','PATCH','DELETE')] [string] $Method,
@@ -447,8 +447,8 @@ function Get-GcUsersAll {
   $users = New-Object System.Collections.Generic.List[object]
 
   do {
-    $state = if ($IncludeInactive) { '' } else { '&state=active' }
-    $pq = "/api/v2/users?pageSize=$PageSize&pageNumber=$page$state"
+    $state = if ($IncludeInactive) { '&state=any' } else { '&state=active' }
+    $pq = "/api/v2/users?pageSize=$PageSize&pageNumber=$page&expand=locations,station,lasttokenissued$state"
     $resp = Invoke-GcApi -Method GET -ApiBaseUri $ApiBaseUri -AccessToken $AccessToken -PathAndQuery $pq
 
     foreach ($u in @($resp.entities)) { $users.Add($u) }
@@ -562,7 +562,7 @@ function New-GcExtensionAuditContext {
   $profileExtNumbers = New-Object System.Collections.Generic.List[string]
 
   Write-Log -Level INFO -Message "Extracting profile extensions from users" -Data @{ UsersTotal = $users.Count }
-  
+
   $processedCount = 0
   foreach ($u in $users) {
     if (-not $u -or [string]::IsNullOrWhiteSpace($u.id)) { continue }
@@ -583,7 +583,7 @@ function New-GcExtensionAuditContext {
       })
       $profileExtNumbers.Add([string]$ext)
     }
-    
+
     # Log progress every 500 users
     if (($processedCount % 500) -eq 0) {
       Write-Log -Level INFO -Message "Profile extraction progress" -Data @{
@@ -795,6 +795,215 @@ function Find-MissingExtensionAssignments {
   return $rows
 }
 
+#region User Issues (from users list only; no extra API calls)
+
+function Get-GcPropertyValue {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Object,
+    [Parameter(Mandatory)] [string[]] $Names
+  )
+
+  if ($null -eq $Object) { return $null }
+  $props = $Object.PSObject.Properties
+  if (-not $props) { return $null }
+
+  foreach ($name in $Names) {
+    foreach ($p in $props) {
+      if ($p.Name -ieq $name) { return $p.Value }
+    }
+  }
+
+  return $null
+}
+
+function ConvertTo-GcDateTime {
+  [CmdletBinding()]
+  param(
+    [Parameter()] $Value
+  )
+
+  if ($null -eq $Value) { return $null }
+
+  if ($Value -is [DateTime]) { return $Value }
+  if ($Value -is [DateTimeOffset]) { return $Value.UtcDateTime }
+
+  if ($Value -is [System.Text.Json.JsonElement]) {
+    switch ($Value.ValueKind) {
+      'String' { return (ConvertTo-GcDateTime -Value $Value.GetString()) }
+      'Number' { return (ConvertTo-GcDateTime -Value $Value.GetDouble()) }
+      'Object' { return $null }
+      default  { return $null }
+    }
+  }
+
+  if ($Value -is [string]) {
+    $dt = $null
+    if ([DateTime]::TryParse($Value, [ref]$dt)) { return $dt }
+
+    $num = $null
+    if ([double]::TryParse($Value, [ref]$num)) { return (ConvertTo-GcDateTime -Value $num) }
+    return $null
+  }
+
+  if ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal]) {
+    $epoch = [double]$Value
+    if ($epoch -gt 1000000000000) {
+      return [DateTimeOffset]::FromUnixTimeMilliseconds([int64][Math]::Floor($epoch)).UtcDateTime
+    }
+    if ($epoch -gt 1000000000) {
+      return [DateTimeOffset]::FromUnixTimeSeconds([int64][Math]::Floor($epoch)).UtcDateTime
+    }
+    return $null
+  }
+
+  if ($Value -is [System.Collections.IDictionary]) {
+    foreach ($name in @('date','timestamp','time','value','lastTokenIssued','lasttokenissued','issuedAt','issuedOn')) {
+      foreach ($k in $Value.Keys) {
+        if ([string]$k -ieq $name) { return (ConvertTo-GcDateTime -Value $Value[$k]) }
+      }
+    }
+    return $null
+  }
+
+  if ($Value -is [psobject]) {
+    $candidate = Get-GcPropertyValue -Object $Value -Names @('date','timestamp','time','value','lastTokenIssued','lasttokenissued','issuedAt','issuedOn')
+    if ($null -ne $candidate) { return (ConvertTo-GcDateTime -Value $candidate) }
+  }
+
+  return $null
+}
+
+function Get-GcUserTokenLastIssuedUtc {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $User
+  )
+
+  $raw = Get-GcPropertyValue -Object $User -Names @(
+    'tokenlastissued','tokenLastIssued','lasttokenissued','lastTokenIssued',
+    'dateLastLogin','dateLastLoginUtc','lastLogin','lastlogin'
+  )
+
+  if ($null -eq $raw) { return $null }
+
+  $dt = ConvertTo-GcDateTime -Value $raw
+  if ($null -eq $dt) { return $null }
+
+  try { return $dt.ToUniversalTime() } catch { return $dt }
+}
+
+function Find-UsersWithStaleTokens {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Context,
+    [Parameter()] [ValidateRange(1, 3650)] [int] $OlderThanDays = 90
+  )
+
+  $threshold = (Get-Date).ToUniversalTime().AddDays(-$OlderThanDays)
+  $issueName = if ($OlderThanDays -eq 90) { 'NoTokenIssuedInLast90Days' } else { "NoTokenIssuedInLast$($OlderThanDays)Days" }
+  $rows = New-Object System.Collections.Generic.List[object]
+
+  foreach ($u in @($Context.Users)) {
+    if (-not $u -or [string]::IsNullOrWhiteSpace([string]$u.id)) { continue }
+
+    $lastIssuedUtc = Get-GcUserTokenLastIssuedUtc -User $u
+    $isStale = $false
+
+    if ($null -eq $lastIssuedUtc) {
+      $isStale = $true
+    } elseif ($lastIssuedUtc -lt $threshold) {
+      $isStale = $true
+    }
+
+    if ($isStale) {
+      $daysSince = $null
+      if ($lastIssuedUtc) {
+        $daysSince = [int]([Math]::Floor(((Get-Date).ToUniversalTime() - $lastIssuedUtc).TotalDays))
+      }
+
+      $rows.Add([pscustomobject][ordered]@{
+        Issue = $issueName
+        UserId = $u.id
+        UserName = $u.name
+        UserEmail = $u.email
+        UserState = $u.state
+        TokenLastIssuedUtc = $lastIssuedUtc
+        DaysSinceTokenIssued = $daysSince
+      })
+    }
+  }
+
+  Write-Log -Level INFO -Message "Users with stale tokens found" -Data @{ Count = $rows.Count; OlderThanDays = $OlderThanDays }
+  return $rows
+}
+
+function Find-UsersMissingDefaultStation {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Context
+  )
+
+  $rows = New-Object System.Collections.Generic.List[object]
+
+  foreach ($u in @($Context.Users)) {
+    if (-not $u -or [string]::IsNullOrWhiteSpace([string]$u.id)) { continue }
+    $station = $u.station
+    $stationId = $null
+    $stationName = $null
+    if ($station) {
+      $stationId = $station.id
+      $stationName = $station.name
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string]$stationId)) {
+      $rows.Add([pscustomobject][ordered]@{
+        Issue = 'NoDefaultStationAssigned'
+        UserId = $u.id
+        UserName = $u.name
+        UserEmail = $u.email
+        UserState = $u.state
+        StationId = $stationId
+        StationName = $stationName
+      })
+    }
+  }
+
+  Write-Log -Level INFO -Message "Users missing default station found" -Data @{ Count = $rows.Count }
+  return $rows
+}
+
+function Find-UsersMissingLocation {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Context
+  )
+
+  $rows = New-Object System.Collections.Generic.List[object]
+
+  foreach ($u in @($Context.Users)) {
+    if (-not $u -or [string]::IsNullOrWhiteSpace([string]$u.id)) { continue }
+
+    $locs = @($u.locations | Where-Object { $_ })
+    $valid = @($locs | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.id) })
+    if ($valid.Count -eq 0) {
+      $rows.Add([pscustomobject][ordered]@{
+        Issue = 'NoLocationAssigned'
+        UserId = $u.id
+        UserName = $u.name
+        UserEmail = $u.email
+        UserState = $u.state
+        LocationCount = $valid.Count
+      })
+    }
+  }
+
+  Write-Log -Level INFO -Message "Users missing location found" -Data @{ Count = $rows.Count }
+  return $rows
+}
+
+#endregion User Issues
+
 #endregion Findings
 
 #region Dry Run Report
@@ -809,6 +1018,9 @@ function New-ExtensionDryRunReport {
   $dupsExts  = Find-DuplicateExtensionRecords -Context $Context
   $disc      = Find-ExtensionDiscrepancies -Context $Context
   $missing   = Find-MissingExtensionAssignments -Context $Context
+  $staleTokens = Find-UsersWithStaleTokens -Context $Context -OlderThanDays 90
+  $missingStations = Find-UsersMissingDefaultStation -Context $Context
+  $missingLocations = Find-UsersMissingLocation -Context $Context
 
   $rows = New-Object System.Collections.Generic.List[object]
 
@@ -885,7 +1097,14 @@ function New-ExtensionDryRunReport {
     Discrepancies = $disc.Count
     DuplicateUserRows = $dupsUsers.Count
     DuplicateExtRows = $dupsExts.Count
+    StaleTokens = $staleTokens.Count
+    MissingDefaultStation = $missingStations.Count
+    MissingLocation = $missingLocations.Count
   }
+
+  $extensionIssuesTotal = $missing.Count + $disc.Count + $dupsUsers.Count + $dupsExts.Count
+  $userIssuesTotal = $staleTokens.Count + $missingStations.Count + $missingLocations.Count
+  $totalIssues = $extensionIssuesTotal + $userIssuesTotal
 
   [pscustomobject]@{
     Metadata = [pscustomobject][ordered]@{
@@ -896,6 +1115,7 @@ function New-ExtensionDryRunReport {
       UsersWithProfileExtension = @($Context.UsersWithProfileExtension).Count
       DistinctProfileExtensions = @($Context.ProfileExtensionNumbers).Count
       ExtensionsLoaded = @($Context.Extensions).Count
+      TokenStaleThresholdDays = 90
     }
     Summary = [pscustomobject][ordered]@{
       TotalRows = $rows.Count
@@ -903,12 +1123,22 @@ function New-ExtensionDryRunReport {
       Discrepancies = $disc.Count
       DuplicateUserRows = $dupsUsers.Count
       DuplicateExtensionRows = $dupsExts.Count
+      UsersWithStaleTokens = $staleTokens.Count
+      UsersMissingDefaultStation = $missingStations.Count
+      UsersMissingLocation = $missingLocations.Count
+      ExtensionIssuesTotal = $extensionIssuesTotal
+      UserIssuesTotal = $userIssuesTotal
+      TotalIssues = $totalIssues
     }
     Rows = @($rows)
     MissingAssignments = $missing
     Discrepancies = $disc
     DuplicateUserAssignments = $dupsUsers
     DuplicateExtensionRecords = $dupsExts
+    UsersWithStaleTokens = $staleTokens
+    UsersMissingDefaultStation = $missingStations
+    UsersMissingLocation = $missingLocations
+    UserIssues = @($staleTokens + $missingStations + $missingLocations)
   }
 }
 
@@ -1078,6 +1308,210 @@ function Patch-MissingExtensionAssignments {
 
 #region Exports
 
+function New-GcEmptyRow {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] [string[]] $Columns
+  )
+  $row = [ordered]@{}
+  foreach ($c in $Columns) { $row[$c] = $null }
+  return [pscustomobject]$row
+}
+
+function ConvertTo-GcKeyValueRows {
+  [CmdletBinding()]
+  param(
+    [Parameter()] $Object
+  )
+  if ($null -eq $Object) { return @() }
+
+  $rows = New-Object System.Collections.Generic.List[object]
+  foreach ($p in $Object.PSObject.Properties) {
+    $rows.Add([pscustomobject][ordered]@{
+      Key = $p.Name
+      Value = $p.Value
+    })
+  }
+  return @($rows)
+}
+
+function New-GcExecutiveSummaryData {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Report,
+    [Parameter()] $DidReport
+  )
+
+  $tokenThreshold = 90
+  if ($Report.Metadata -and $Report.Metadata.TokenStaleThresholdDays) {
+    try { $tokenThreshold = [int]$Report.Metadata.TokenStaleThresholdDays } catch { $tokenThreshold = 90 }
+  }
+
+  $extMissing = [int]$Report.Summary.MissingAssignments
+  $extDisc = [int]$Report.Summary.Discrepancies
+  $extDupUsers = [int]$Report.Summary.DuplicateUserRows
+  $extDupExts = [int]$Report.Summary.DuplicateExtensionRows
+
+  $staleTokens = [int]$Report.Summary.UsersWithStaleTokens
+  $missingStations = [int]$Report.Summary.UsersMissingDefaultStation
+  $missingLocations = [int]$Report.Summary.UsersMissingLocation
+
+  $extensionIssuesTotal = $extMissing + $extDisc + $extDupUsers + $extDupExts
+  $userIssuesTotal = $staleTokens + $missingStations + $missingLocations
+
+  $didProvided = $false
+  $didIssuesTotal = $null
+  $didMissing = 0
+  $didDisc = 0
+  $didDupUsers = 0
+  $didDupExts = 0
+  if ($DidReport) {
+    $didProvided = $true
+    $didMissing = [int]$DidReport.Summary.MissingAssignments
+    $didDisc = [int]$DidReport.Summary.Discrepancies
+    $didDupUsers = [int]$DidReport.Summary.DuplicateUserRows
+    $didDupExts = [int]$DidReport.Summary.DuplicateExtensionRows
+    $didIssuesTotal = $didMissing + $didDisc + $didDupUsers + $didDupExts
+  }
+
+  $totalIssues = $extensionIssuesTotal + $userIssuesTotal + (if ($didIssuesTotal -ne $null) { $didIssuesTotal } else { 0 })
+
+  $issueBreakdown = New-Object System.Collections.Generic.List[object]
+  $issueBreakdown.Add([pscustomobject]@{ Category='Missing Assignments'; Scope='Extensions'; Count=$extMissing; Severity='High' })
+  $issueBreakdown.Add([pscustomobject]@{ Category='Discrepancies'; Scope='Extensions'; Count=$extDisc; Severity='Medium' })
+  $issueBreakdown.Add([pscustomobject]@{ Category='Duplicate User Assignments'; Scope='Extensions'; Count=$extDupUsers; Severity='High' })
+  $issueBreakdown.Add([pscustomobject]@{ Category='Duplicate Extension Records'; Scope='Extensions'; Count=$extDupExts; Severity='Low' })
+  $issueBreakdown.Add([pscustomobject]@{ Category=("Token Older Than {0} Days" -f $tokenThreshold); Scope='Users'; Count=$staleTokens; Severity='Medium' })
+  $issueBreakdown.Add([pscustomobject]@{ Category='No Default Station Assigned'; Scope='Users'; Count=$missingStations; Severity='Medium' })
+  $issueBreakdown.Add([pscustomobject]@{ Category='No Location Assigned'; Scope='Users'; Count=$missingLocations; Severity='Medium' })
+
+  if ($didProvided) {
+    $issueBreakdown.Add([pscustomobject]@{ Category='Missing Assignments'; Scope='DIDs'; Count=$didMissing; Severity='High' })
+    $issueBreakdown.Add([pscustomobject]@{ Category='Discrepancies'; Scope='DIDs'; Count=$didDisc; Severity='Medium' })
+    $issueBreakdown.Add([pscustomobject]@{ Category='Duplicate User Assignments'; Scope='DIDs'; Count=$didDupUsers; Severity='High' })
+    $issueBreakdown.Add([pscustomobject]@{ Category='Duplicate DID Records'; Scope='DIDs'; Count=$didDupExts; Severity='Low' })
+  }
+
+  $ranked = @($issueBreakdown | Where-Object { $_.Count -is [int] -and $_.Count -gt 0 } | Sort-Object Count -Descending)
+  $overview = "No issues detected across extension/user audits."
+  if ($ranked.Count -gt 0) {
+    $top = $ranked[0]
+    $overview = "Total issues detected: $totalIssues. The most prevalent category is $($top.Category) ($($top.Count)) in $($top.Scope)."
+    if ($ranked.Count -gt 1) {
+      $second = $ranked[1]
+      $overview += " Secondary focus: $($second.Category) ($($second.Count)) in $($second.Scope)."
+    }
+  }
+
+  $keyMetrics = New-Object System.Collections.Generic.List[object]
+  $keyMetrics.Add([pscustomobject]@{ Metric='Total Issues'; Value=$totalIssues })
+  $keyMetrics.Add([pscustomobject]@{ Metric='Extension Issues'; Value=$extensionIssuesTotal })
+  $keyMetrics.Add([pscustomobject]@{ Metric='User Issues'; Value=$userIssuesTotal })
+  $keyMetrics.Add([pscustomobject]@{ Metric='DID Issues'; Value=(if ($didProvided) { $didIssuesTotal } else { 'N/A (not provided)' }) })
+
+  [pscustomobject]@{
+    Overview = $overview
+    KeyMetrics = @($keyMetrics)
+    IssueBreakdown = @($issueBreakdown)
+    TotalIssues = $totalIssues
+  }
+}
+
+function Export-GcAuditWorkbook {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)] $Report,
+    [Parameter(Mandatory)] [string] $Path,
+    [Parameter()] $DidReport,
+    [Parameter()] [switch] $SkipEmptySheets
+  )
+
+  Import-Module ImportExcel -ErrorAction Stop
+
+  $dir = Split-Path -Parent $Path
+  if (-not [string]::IsNullOrWhiteSpace($dir) -and -not (Test-Path -LiteralPath $dir)) {
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+  }
+
+  if ([string]::IsNullOrWhiteSpace([IO.Path]::GetExtension($Path))) {
+    $Path = "$Path.xlsx"
+  }
+
+  if (Test-Path -LiteralPath $Path) {
+    Remove-Item -LiteralPath $Path -Force
+  }
+
+  $sheets = @(
+    @{ Name='Missing Assignments'; Table='MissingAssignments'; Rows=@($Report.MissingAssignments); Columns=@('Issue','ProfileExtension','UserId','UserName','UserEmail','UserState') }
+    @{ Name='Discrepancies'; Table='Discrepancies'; Rows=@($Report.Discrepancies); Columns=@('Issue','ProfileExtension','UserId','UserName','UserEmail','ExtensionId','ExtensionOwnerType','ExtensionOwnerId') }
+    @{ Name='Duplicate User Assignments'; Table='DuplicateUserAssignments'; Rows=@($Report.DuplicateUserAssignments); Columns=@('ProfileExtension','UserId','UserName','UserEmail','UserState') }
+    @{ Name='Duplicate Extension Records'; Table='DuplicateExtensionRecords'; Rows=@($Report.DuplicateExtensionRecords); Columns=@('ExtensionNumber','ExtensionId','OwnerType','OwnerId','ExtensionPoolId') }
+    @{ Name='Stale Tokens'; Table='StaleTokens'; Rows=@($Report.UsersWithStaleTokens); Columns=@('Issue','UserId','UserName','UserEmail','UserState','TokenLastIssuedUtc','DaysSinceTokenIssued') }
+    @{ Name='No Default Station'; Table='NoDefaultStation'; Rows=@($Report.UsersMissingDefaultStation); Columns=@('Issue','UserId','UserName','UserEmail','UserState','StationId','StationName') }
+    @{ Name='No Location'; Table='NoLocation'; Rows=@($Report.UsersMissingLocation); Columns=@('Issue','UserId','UserName','UserEmail','UserState','LocationCount') }
+  )
+
+  foreach ($sheet in $sheets) {
+    $rows = @($sheet.Rows)
+    if ($rows.Count -eq 0 -and $SkipEmptySheets) { continue }
+
+    if ($rows.Count -eq 0) {
+      $rows = @(New-GcEmptyRow -Columns $sheet.Columns)
+    }
+
+    $rows = $rows | Select-Object $sheet.Columns
+    $append = (Test-Path -LiteralPath $Path)
+
+    Export-Excel -Path $Path `
+      -WorksheetName $sheet.Name `
+      -TableName $sheet.Table `
+      -InputObject $rows `
+      -AutoSize `
+      -BoldTopRow `
+      -FreezeTopRow `
+      -Append:$append | Out-Null
+  }
+
+  $summary = New-GcExecutiveSummaryData -Report $Report -DidReport $DidReport
+  $metaRows = ConvertTo-GcKeyValueRows -Object $Report.Metadata
+
+  $pkg = Open-ExcelPackage -Path $Path
+  try {
+    $existing = $pkg.Workbook.Worksheets['Summary']
+    if ($existing) { $pkg.Workbook.Worksheets.Delete($existing) }
+    $ws = $pkg.Workbook.Worksheets.Add('Summary')
+
+    Set-ExcelRange -Worksheet $ws -Range 'A1:D1' -Merge -Value 'Genesys Cloud Audit Executive Summary' -Bold -FontSize 16
+    $metaLine = "Generated: $($Report.Metadata.GeneratedAt); API Base: $($Report.Metadata.ApiBaseUri); Mode: $($Report.Metadata.ExtensionMode)"
+    Set-ExcelRange -Worksheet $ws -Range 'A2:D2' -Merge -Value $metaLine -FontSize 11
+
+    Set-ExcelRange -Worksheet $ws -Range 'A4' -Value 'Executive Overview' -Bold -FontSize 12
+    Set-ExcelRange -Worksheet $ws -Range 'A5:D6' -Merge -WrapText -Value $summary.Overview
+
+    $keyTitleRow = 8
+    Set-ExcelRange -Worksheet $ws -Range "A$keyTitleRow" -Value 'Key Metrics' -Bold -FontSize 12
+    $keyStart = $keyTitleRow + 1
+    Export-Excel -ExcelPackage $pkg -WorksheetName 'Summary' -StartRow $keyStart -StartColumn 1 -TableName 'KeyMetrics' -InputObject $summary.KeyMetrics -AutoSize -BoldTopRow | Out-Null
+
+    $issueTitleRow = $keyStart + @($summary.KeyMetrics).Count + 2
+    Set-ExcelRange -Worksheet $ws -Range "A$issueTitleRow" -Value 'Issue Breakdown' -Bold -FontSize 12
+    $issueStart = $issueTitleRow + 1
+    Export-Excel -ExcelPackage $pkg -WorksheetName 'Summary' -StartRow $issueStart -StartColumn 1 -TableName 'IssueBreakdown' -InputObject $summary.IssueBreakdown -AutoSize -BoldTopRow | Out-Null
+
+    $metaTitleRow = $issueStart + @($summary.IssueBreakdown).Count + 2
+    Set-ExcelRange -Worksheet $ws -Range "A$metaTitleRow" -Value 'Context Snapshot' -Bold -FontSize 12
+    $metaStart = $metaTitleRow + 1
+    if ($metaRows.Count -gt 0) {
+      Export-Excel -ExcelPackage $pkg -WorksheetName 'Summary' -StartRow $metaStart -StartColumn 1 -TableName 'ContextSnapshot' -InputObject $metaRows -AutoSize -BoldTopRow | Out-Null
+    }
+  } finally {
+    Close-ExcelPackage $pkg
+  }
+
+  Write-Log -Level INFO -Message "Workbook exported" -Data @{ Path = $Path }
+  return $Path
+}
+
 function Export-ReportCsv {
   [CmdletBinding()]
   param(
@@ -1106,8 +1540,9 @@ Export-ModuleMember -Function @(
   'New-GcExtensionAuditContext',
   'Find-DuplicateUserExtensionAssignments','Find-DuplicateExtensionRecords',
   'Find-ExtensionDiscrepancies','Find-MissingExtensionAssignments',
+  'Find-UsersWithStaleTokens','Find-UsersMissingDefaultStation','Find-UsersMissingLocation',
   'New-ExtensionDryRunReport',
   'Patch-MissingExtensionAssignments',
-  'Export-ReportCsv'
+  'Export-GcAuditWorkbook','Export-ReportCsv'
 )
 ### END FILE: GcExtensionAudit.psm1
