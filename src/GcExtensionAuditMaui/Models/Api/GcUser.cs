@@ -30,6 +30,9 @@ public sealed class GcUser
 
     [JsonPropertyName("dateLastLogin")]
     public DateTime? DateLastLogin { get; set; }
+
+    [JsonPropertyName("authorization")]
+    public GcUserAuthorization? Authorization { get; set; }
 }
 
 public sealed class GcUserStation
@@ -54,5 +57,20 @@ public sealed class GcLocation
 
     [JsonPropertyName("selfUri")]
     public string? SelfUri { get; set; }
+}
+
+public sealed class GcUserAuthorization
+{
+    [JsonPropertyName("unusedRoles")]
+    public List<GcRole>? UnusedRoles { get; set; }
+}
+
+public sealed class GcRole
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
 }
 
