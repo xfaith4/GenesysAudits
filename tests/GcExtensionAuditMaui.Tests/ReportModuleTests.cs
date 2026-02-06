@@ -104,15 +104,41 @@ public sealed class ReportModuleTests
     {
         return new DryRunReport
         {
-            Rows = new List<DryRunPreviewRow>(),
-            Summary = new DryRunSummary(),
+            Metadata = new DryRunMetadata
+            {
+                GeneratedAt = "2024-01-01T00:00:00Z",
+                ApiBaseUri = "https://api.usw2.pure.cloud",
+                ExtensionMode = "FULL",
+                UsersTotal = 1,
+                UsersWithProfileExtension = 0,
+                DistinctProfileExtensions = 0,
+                ExtensionsLoaded = 1
+            },
+            Rows = new List<DryRunRow>(),
+            Summary = new DryRunSummary
+            {
+                TotalRows = 0,
+                MissingAssignments = 0,
+                Discrepancies = 0,
+                DuplicateUserRows = 0,
+                DuplicateExtensionRows = 1,
+                UserIssues = 0
+            },
             MissingAssignments = new List<MissingAssignmentRow>(),
             Discrepancies = new List<DiscrepancyRow>(),
             DuplicateUserAssignments = new List<DuplicateUserAssignmentRow>(),
             DuplicateExtensionRecords = new List<DuplicateExtensionRecordRow>
             {
-                new() { ExtensionId = "e1", ExtensionNumber = "100", Issue = "Duplicate" }
-            }
+                new() 
+                { 
+                    ExtensionId = "e1", 
+                    ExtensionNumber = "100", 
+                    OwnerType = "USER", 
+                    OwnerId = "u1", 
+                    ExtensionPoolId = null 
+                }
+            },
+            UserIssues = new List<UserIssueRow>()
         };
     }
 
