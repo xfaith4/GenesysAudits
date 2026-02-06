@@ -84,17 +84,20 @@ This document summarizes the hardening pass performed on the GenesysAudits repos
     - `SleepMsBetween` - prevents negative sleep values
     - `MaxUpdates` - prevents negative update limits
     - `MaxFailures` - prevents negative failure limits
+  - Added warning logs when values are sanitized (e.g., "Sleep time must be non-negative. Adjusted from -5 to 0.")
 
 - `src/GcExtensionAuditMaui/ViewModels/ConnectionViewModel.cs`
   - Added URI format validation for `ApiBaseUri`:
     - Validates HTTP/HTTPS scheme
     - Uses `Uri.TryCreate()` for proper format checking
     - Logs warning for invalid URIs
+    - Preserves valid state and notifies UI when invalid input is rejected
   - Added token length validation for `AccessToken`:
-    - Warns if token is less than 10 characters
-    - Helps catch obvious input errors early
+    - Minimum length constant: 20 characters (OAuth tokens are typically 100+)
+    - Warns if token is too short to help catch obvious input errors
+    - Constant documented with rationale
 
-**Impact:** Prevents invalid configuration from causing runtime errors. Provides immediate feedback to users.
+**Impact:** Prevents invalid configuration from causing runtime errors. Provides immediate feedback to users through logging. UI remains consistent when invalid values are rejected.
 
 ### 5. Build Artifact Management ✅
 
@@ -153,7 +156,19 @@ dotnet test GcExtensionAuditMaui.sln
 - ✅ No obvious security vulnerabilities in changed code
 - ✅ Consistent error handling patterns
 
+**Code Review Results:**
+- Initial review identified 3 issues:
+  1. Silent input sanitization without user feedback
+  2. Property change notification issue on validation failure
+  3. Arbitrary minimum token length constant
+- All 3 issues were addressed in commit `dc2e7c9`:
+  - Added logging when numeric inputs are sanitized
+  - Fixed property notification to preserve UI state on invalid input
+  - Extracted minimum token length to named constant with documentation
+
 **Tools Used:**
+- Automated code review (GitHub Copilot)
+- CodeQL security scanner (0 vulnerabilities found)
 - Manual code review via grep/ripgrep
 - Static analysis via explore agent
 - Pattern matching for common anti-patterns
@@ -203,9 +218,17 @@ dotnet test GcExtensionAuditMaui.sln
 
 ## Security Notes
 
+### CodeQL Security Scan ✅
+
+**Scan Date:** 2026-02-06  
+**Result:** 0 vulnerabilities found
+
+The codebase was scanned using CodeQL for C# and no security alerts were detected. All changes are secure.
+
 ### Findings ✅
 
 - **No security vulnerabilities introduced** by hardening changes
+- **No security vulnerabilities detected** in existing code by CodeQL
 - Access tokens are handled securely:
   - Stored in-memory only (not persisted)
   - Password field for UI entry
@@ -274,14 +297,19 @@ To verify the hardening changes on a Windows machine:
 
 ## Statistics
 
-**Files Changed:** 9  
-**Lines Added:** 156  
-**Lines Removed:** 42  
-**Net Change:** +114 lines
+**Files Changed:** 11 (including HARDENING_NOTES.md)  
+**Lines Added:** 335  
+**Lines Removed:** 46  
+**Net Change:** +289 lines
 
-**Commits:** 2
+**Commits:** 3
 1. `c6a6305` - Phase 1 & 2 complete: Fix placeholders, extract magic numbers, improve validation
 2. `6d34db8` - Phase 3 complete: Improve README documentation
+3. `dc2e7c9` - Address code review feedback: Add logging for sanitized inputs and fix property notification
+
+**Security Scans:**
+- ✅ CodeQL scan: 0 vulnerabilities found
+- ✅ Code review: 3 issues identified and resolved
 
 ---
 
