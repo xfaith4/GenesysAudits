@@ -39,5 +39,3 @@ _ReSharper*/
 **/packages/*
 !**/packages/build/
 
-# Output folders
-dist/
