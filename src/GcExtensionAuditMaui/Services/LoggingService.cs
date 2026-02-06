@@ -14,6 +14,11 @@ public sealed class LoggingService
         WriteIndented = false,
     };
 
+    // Configuration constants
+    private const int UiPumpIntervalMs = 300;
+    private const int BatchInitialCapacity = 128;
+    private const int MaxBatchSize = 256;
+
     private StreamWriter? _writer;
     private Task? _uiPump;
     private CancellationTokenSource? _uiCts;
@@ -75,9 +80,13 @@ public sealed class LoggingService
         {
             _writer?.WriteLine(Format(entry));
         }
-        catch
+        catch (IOException)
         {
             // Intentionally ignore logging I/O failures to avoid cascading UI failures.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Writer was disposed, ignore to avoid cascading failures.
         }
 
         _pendingUi.Enqueue(entry);
@@ -98,13 +107,13 @@ public sealed class LoggingService
 
     private async Task UiPumpAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(300));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(UiPumpIntervalMs));
         while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
         {
             if (_pendingUi.IsEmpty) { continue; }
 
-            var batch = new List<LogEntry>(128);
-            while (batch.Count < 256 && _pendingUi.TryDequeue(out var e))
+            var batch = new List<LogEntry>(BatchInitialCapacity);
+            while (batch.Count < MaxBatchSize && _pendingUi.TryDequeue(out var e))
             {
                 batch.Add(e);
             }

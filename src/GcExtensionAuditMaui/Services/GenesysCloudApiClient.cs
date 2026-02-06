@@ -16,6 +16,21 @@ public sealed class GenesysCloudApiClient
     private readonly JsonSerializerOptions _json;
     private readonly Random _jitter = new();
 
+    // Retry and backoff configuration constants
+    private const int MaxRetries = 5;
+    private const int InitialBackoffMs = 500;
+    private const int MaxBackoffMs = 8000;
+    private const double BackoffMultiplier = 1.8;
+    private const int MaxJitterMs = 250;
+    private const int RequestTimeoutSeconds = 120;
+
+    // HTTP status codes for retry logic
+    private const int HttpStatusTooManyRequests = 429;
+    private const int HttpStatusInternalServerError = 500;
+    private const int HttpStatusBadGateway = 502;
+    private const int HttpStatusServiceUnavailable = 503;
+    private const int HttpStatusGatewayTimeout = 504;
+
     public GenesysCloudApiClient(HttpClient http, ApiStats stats, LoggingService log)
     {
         _http = http;
@@ -63,8 +78,7 @@ public sealed class GenesysCloudApiClient
 
     private async Task<T?> SendAsync<T>(HttpMethod method, string apiBaseUri, string accessToken, string pathAndQuery, object? body, CancellationToken ct)
     {
-        const int maxRetries = 5;
-        var backoffMs = 500;
+        var backoffMs = InitialBackoffMs;
 
         apiBaseUri = apiBaseUri.TrimEnd('/');
         if (!pathAndQuery.StartsWith('/')) { pathAndQuery = "/" + pathAndQuery; }
@@ -72,7 +86,7 @@ public sealed class GenesysCloudApiClient
         var uri = new Uri(apiBaseUri + pathAndQuery, UriKind.Absolute);
         var pathKey = pathAndQuery.Split('?')[0];
 
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; attempt <= MaxRetries; attempt++)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -90,7 +104,7 @@ public sealed class GenesysCloudApiClient
             _log.Log(LogLevel.Debug, $"API {method.Method} {pathAndQuery} (attempt {attempt})");
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(120));
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(RequestTimeoutSeconds));
 
             HttpResponseMessage? resp = null;
             try
@@ -111,7 +125,7 @@ public sealed class GenesysCloudApiClient
                 }
 
                 var status = (int)resp.StatusCode;
-                var isRetryable = status == 429 || status is >= 500 and <= 599;
+                var isRetryable = status == HttpStatusTooManyRequests || status is >= HttpStatusInternalServerError and <= HttpStatusGatewayTimeout;
 
                 var bodyText = resp.Content is null ? null : await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var msg = $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}";
@@ -127,21 +141,21 @@ public sealed class GenesysCloudApiClient
                     Body = Truncate(bodyText, 1000),
                 });
 
-                if (!isRetryable || attempt == maxRetries)
+                if (!isRetryable || attempt == MaxRetries)
                 {
                     throw new HttpRequestException(msg, null, resp.StatusCode);
                 }
 
                 var retryAfter = GetRetryAfterMs(resp);
-                var jitter = _jitter.Next(0, 250);
+                var jitter = _jitter.Next(0, MaxJitterMs);
                 var sleepMs = Math.Max(backoffMs, retryAfter) + jitter;
                 await Task.Delay(sleepMs, ct).ConfigureAwait(false);
 
-                backoffMs = Math.Min(8000, (int)(backoffMs * 1.8));
+                backoffMs = Math.Min(MaxBackoffMs, (int)(backoffMs * BackoffMultiplier));
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                var msg = $"Request timed out after 120s: {method.Method} {pathAndQuery}";
+                var msg = $"Request timed out after {RequestTimeoutSeconds}s: {method.Method} {pathAndQuery}";
                 _stats.RecordError(msg);
                 _log.Log(LogLevel.Error, msg);
                 throw new TimeoutException(msg);

@@ -33,9 +33,23 @@ public sealed partial class ConnectionViewModel : ObservableObject
         get => _apiBaseUri;
         set
         {
-            if (SetProperty(ref _apiBaseUri, value))
+            // Normalize and validate the URI
+            var normalized = value?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(normalized))
             {
-                Preferences.Set(nameof(ApiBaseUri), value ?? "");
+                // Basic URI format validation
+                if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri) || 
+                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    _log.Log(LogLevel.Warn, "Invalid API Base URI format. Must be a valid HTTP/HTTPS URL.");
+                    // Don't update the value if invalid
+                    return;
+                }
+            }
+            
+            if (SetProperty(ref _apiBaseUri, normalized))
+            {
+                Preferences.Set(nameof(ApiBaseUri), normalized);
             }
         }
     }
@@ -44,7 +58,16 @@ public sealed partial class ConnectionViewModel : ObservableObject
     public string AccessToken
     {
         get => _accessToken;
-        set => SetProperty(ref _accessToken, value ?? "");
+        set
+        {
+            // Basic token validation
+            var token = value ?? "";
+            if (!string.IsNullOrWhiteSpace(token) && token.Length < 10)
+            {
+                _log.Log(LogLevel.Warn, "Access token appears too short. Ensure you have a valid token.");
+            }
+            SetProperty(ref _accessToken, token);
+        }
     }
 
     private bool _useEnvToken;
