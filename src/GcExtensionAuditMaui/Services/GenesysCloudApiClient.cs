@@ -29,7 +29,8 @@ public sealed class GenesysCloudApiClient
     public Task<PagedResponse<GcUser>?> GetUsersPageAsync(string apiBaseUri, string accessToken, int pageSize, int pageNumber, bool includeInactive, CancellationToken ct)
     {
         var state = includeInactive ? "" : "&state=active";
-        var pq = $"/api/v2/users?pageSize={pageSize}&pageNumber={pageNumber}{state}";
+        var expand = "station,locations,lasttokenissued,authorization.unusedRoles";
+        var pq = $"/api/v2/users?pageSize={pageSize}&pageNumber={pageNumber}{state}&expand={expand}";
         return SendAsync<PagedResponse<GcUser>>(HttpMethod.Get, apiBaseUri, accessToken, pq, body: null, ct);
     }
 

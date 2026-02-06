@@ -11,6 +11,7 @@ public sealed class DryRunReport
     public required IReadOnlyList<DiscrepancyRow> Discrepancies { get; init; }
     public required IReadOnlyList<DuplicateUserAssignmentRow> DuplicateUserAssignments { get; init; }
     public required IReadOnlyList<DuplicateExtensionRecordRow> DuplicateExtensionRecords { get; init; }
+    public required IReadOnlyList<UserIssueRow> UserIssues { get; init; }
 }
 
 public sealed class DryRunMetadata
@@ -31,6 +32,7 @@ public sealed class DryRunSummary
     public required int Discrepancies { get; init; }
     public required int DuplicateUserRows { get; init; }
     public required int DuplicateExtensionRows { get; init; }
+    public required int UserIssues { get; init; }
 }
 
 public sealed class DryRunRow

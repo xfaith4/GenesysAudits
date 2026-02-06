@@ -297,4 +297,166 @@ public sealed class AuditServiceTests
         var discrepancies = plan.Items.Where(i => i.Category == "Discrepancy").ToList();
         Assert.All(discrepancies, d => Assert.Equal(FixupActionType.ReassertExisting, d.Action));
     }
+
+    [Fact]
+    public void FindUserIssues_DetectsUsersWithoutLocation()
+    {
+        var svc = CreateAuditService();
+        var users = new List<GcUser>
+        {
+            new()
+            {
+                Id = "u1",
+                Name = "Alice",
+                Email = "alice@example.com",
+                State = "active",
+                Locations = null, // No location
+                Station = new GcUserStation { Id = "s1", Name = "Station 1" },
+                DateLastLogin = DateTime.UtcNow.AddDays(-30)
+            },
+            new()
+            {
+                Id = "u2",
+                Name = "Bob",
+                Email = "bob@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = new GcUserStation { Id = "s2", Name = "Station 2" },
+                DateLastLogin = DateTime.UtcNow.AddDays(-30)
+            }
+        };
+
+        var ctx = new AuditContext
+        {
+            AuditKind = AuditNumberKind.Extension,
+            Users = users,
+            UsersById = new Dictionary<string, GcUser>(),
+            UserDisplayById = new Dictionary<string, string>(),
+            UsersWithProfileExtension = new List<UserWithProfileExtensionRow>(),
+            ProfileExtensionNumbers = new List<string>(),
+            Extensions = new List<GcExtension>(),
+            ExtensionsByNumber = new Dictionary<string, IReadOnlyList<GcExtension>>(),
+            ExtensionMode = "FULL",
+            ApiBaseUri = "https://api.example.com",
+            AccessToken = "token",
+            IncludeInactive = false
+        };
+
+        var issues = svc.FindUserIssues(ctx);
+
+        Assert.Single(issues.Where(i => i.Issue == "NoLocationAssigned"));
+        Assert.Equal("u1", issues.First(i => i.Issue == "NoLocationAssigned").UserId);
+    }
+
+    [Fact]
+    public void FindUserIssues_DetectsUsersWithoutStation()
+    {
+        var svc = CreateAuditService();
+        var users = new List<GcUser>
+        {
+            new()
+            {
+                Id = "u1",
+                Name = "Alice",
+                Email = "alice@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = null, // No station
+                DateLastLogin = DateTime.UtcNow.AddDays(-30)
+            },
+            new()
+            {
+                Id = "u2",
+                Name = "Bob",
+                Email = "bob@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = new GcUserStation { Id = "s2", Name = "Station 2" },
+                DateLastLogin = DateTime.UtcNow.AddDays(-30)
+            }
+        };
+
+        var ctx = new AuditContext
+        {
+            AuditKind = AuditNumberKind.Extension,
+            Users = users,
+            UsersById = new Dictionary<string, GcUser>(),
+            UserDisplayById = new Dictionary<string, string>(),
+            UsersWithProfileExtension = new List<UserWithProfileExtensionRow>(),
+            ProfileExtensionNumbers = new List<string>(),
+            Extensions = new List<GcExtension>(),
+            ExtensionsByNumber = new Dictionary<string, IReadOnlyList<GcExtension>>(),
+            ExtensionMode = "FULL",
+            ApiBaseUri = "https://api.example.com",
+            AccessToken = "token",
+            IncludeInactive = false
+        };
+
+        var issues = svc.FindUserIssues(ctx);
+
+        Assert.Single(issues.Where(i => i.Issue == "NoDefaultStationAssigned"));
+        Assert.Equal("u1", issues.First(i => i.Issue == "NoDefaultStationAssigned").UserId);
+    }
+
+    [Fact]
+    public void FindUserIssues_DetectsUsersWithoutRecentLogin()
+    {
+        var svc = CreateAuditService();
+        var users = new List<GcUser>
+        {
+            new()
+            {
+                Id = "u1",
+                Name = "Alice",
+                Email = "alice@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = new GcUserStation { Id = "s1", Name = "Station 1" },
+                DateLastLogin = DateTime.UtcNow.AddDays(-100) // More than 90 days ago
+            },
+            new()
+            {
+                Id = "u2",
+                Name = "Bob",
+                Email = "bob@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = new GcUserStation { Id = "s2", Name = "Station 2" },
+                DateLastLogin = null // Never logged in
+            },
+            new()
+            {
+                Id = "u3",
+                Name = "Carol",
+                Email = "carol@example.com",
+                State = "active",
+                Locations = new List<GcLocation> { new() { Id = "l1", Name = "Location 1" } },
+                Station = new GcUserStation { Id = "s3", Name = "Station 3" },
+                DateLastLogin = DateTime.UtcNow.AddDays(-30) // Recent login
+            }
+        };
+
+        var ctx = new AuditContext
+        {
+            AuditKind = AuditNumberKind.Extension,
+            Users = users,
+            UsersById = new Dictionary<string, GcUser>(),
+            UserDisplayById = new Dictionary<string, string>(),
+            UsersWithProfileExtension = new List<UserWithProfileExtensionRow>(),
+            ProfileExtensionNumbers = new List<string>(),
+            Extensions = new List<GcExtension>(),
+            ExtensionsByNumber = new Dictionary<string, IReadOnlyList<GcExtension>>(),
+            ExtensionMode = "FULL",
+            ApiBaseUri = "https://api.example.com",
+            AccessToken = "token",
+            IncludeInactive = false
+        };
+
+        var issues = svc.FindUserIssues(ctx);
+
+        var noTokenIssues = issues.Where(i => i.Issue == "NoTokenIssuedInLast90Days").ToList();
+        Assert.Equal(2, noTokenIssues.Count);
+        Assert.Contains(noTokenIssues, i => i.UserId == "u1");
+        Assert.Contains(noTokenIssues, i => i.UserId == "u2");
+    }
 }

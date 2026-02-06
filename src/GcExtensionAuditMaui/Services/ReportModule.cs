@@ -393,6 +393,54 @@ public sealed class ReportModule
             });
         }
 
+        // Convert user issues
+        foreach (var userIssue in report.UserIssues)
+        {
+            var issueDescription = userIssue.Issue switch
+            {
+                "NoLocationAssigned" => "User has no location assigned",
+                "NoDefaultStationAssigned" => "User has no default station assigned",
+                "NoTokenIssuedInLast90Days" => userIssue.DateLastLogin.HasValue 
+                    ? "User has not logged in within the last 90 days" 
+                    : "User has never logged in",
+                _ => userIssue.Issue
+            };
+
+            var recommendation = userIssue.Issue switch
+            {
+                "NoLocationAssigned" => "Assign a location to the user",
+                "NoDefaultStationAssigned" => "Assign a default station to the user",
+                "NoTokenIssuedInLast90Days" => "Review user activity and consider deactivating inactive users",
+                _ => "Review user configuration"
+            };
+
+            var field = userIssue.Issue switch
+            {
+                "NoLocationAssigned" => "Location",
+                "NoDefaultStationAssigned" => "Station",
+                "NoTokenIssuedInLast90Days" => "DateLastLogin",
+                _ => "User"
+            };
+
+            var lastLoginInfo = userIssue.DateLastLogin.HasValue 
+                ? $"Last login: {userIssue.DateLastLogin.Value:yyyy-MM-dd HH:mm:ss} UTC" 
+                : "Never logged in";
+
+            issues.Add(new IssueRow
+            {
+                IssueFound = issueDescription,
+                CurrentState = $"User: {userIssue.UserEmail}, State: {userIssue.UserState}, {lastLoginInfo}",
+                NewState = recommendation,
+                Severity = userIssue.Issue == "NoLocationAssigned" || userIssue.Issue == "NoDefaultStationAssigned" ? "Medium" : "Low",
+                EntityType = "User",
+                EntityId = userIssue.UserId,
+                EntityName = userIssue.UserName ?? "",
+                Field = field,
+                Recommendation = recommendation,
+                SourceEndpoint = "/api/v2/users"
+            });
+        }
+
         return issues;
     }
 }

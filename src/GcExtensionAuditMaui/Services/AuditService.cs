@@ -401,12 +401,59 @@ public sealed class AuditService
         return rows;
     }
 
+    public IReadOnlyList<UserIssueRow> FindUserIssues(AuditContext context)
+    {
+        var rows = new List<UserIssueRow>();
+        var now = DateTime.UtcNow;
+        var ninetyDaysAgo = now.AddDays(-90);
+
+        foreach (var user in context.Users)
+        {
+            if (user.Id is null) continue;
+
+            // Check for missing location
+            if (user.Locations is null || user.Locations.Count == 0)
+            {
+                rows.Add(CreateUserIssue("NoLocationAssigned", user));
+            }
+
+            // Check for missing default station
+            if (user.Station is null || string.IsNullOrWhiteSpace(user.Station.Id))
+            {
+                rows.Add(CreateUserIssue("NoDefaultStationAssigned", user));
+            }
+
+            // Check for token not issued in last 90 days (or never logged in)
+            if (user.DateLastLogin is null || user.DateLastLogin.Value < ninetyDaysAgo)
+            {
+                rows.Add(CreateUserIssue("NoTokenIssuedInLast90Days", user));
+            }
+        }
+
+        _log.Log(LogLevel.Info, "User issues found", new { Count = rows.Count });
+        return rows;
+    }
+
+    private static UserIssueRow CreateUserIssue(string issue, GcUser user)
+    {
+        return new UserIssueRow
+        {
+            Issue = issue,
+            UserId = user.Id!,
+            UserName = user.Name,
+            UserEmail = user.Email,
+            UserState = user.State,
+            DateLastLogin = user.DateLastLogin,
+        };
+    }
+
     public DryRunReport NewDryRunReport(AuditContext context)
     {
         var dupsUsers = FindDuplicateUserExtensionAssignments(context);
         var dupsExts = FindDuplicateExtensionRecords(context);
         var disc = FindExtensionDiscrepancies(context);
         var missing = FindMissingExtensionAssignments(context);
+        var userIssues = FindUserIssues(context);
 
         var rows = new List<DryRunRow>();
 
@@ -493,6 +540,7 @@ public sealed class AuditService
             Discrepancies = disc.Count,
             DuplicateUserRows = dupsUsers.Count,
             DuplicateExtRows = dupsExts.Count,
+            UserIssues = userIssues.Count,
         });
 
         return new DryRunReport
@@ -514,12 +562,14 @@ public sealed class AuditService
                 Discrepancies = disc.Count,
                 DuplicateUserRows = dupsUsers.Count,
                 DuplicateExtensionRows = dupsExts.Count,
+                UserIssues = userIssues.Count,
             },
             Rows = rows,
             MissingAssignments = missing,
             Discrepancies = disc,
             DuplicateUserAssignments = dupsUsers,
             DuplicateExtensionRecords = dupsExts,
+            UserIssues = userIssues,
         };
     }
 
