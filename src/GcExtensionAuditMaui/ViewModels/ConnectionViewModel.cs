@@ -9,6 +9,9 @@ namespace GcExtensionAuditMaui.ViewModels;
 
 public sealed partial class ConnectionViewModel : ObservableObject
 {
+    // Minimum reasonable token length for validation (OAuth tokens are typically much longer)
+    private const int MinimumTokenLength = 20;
+    
     private readonly ContextStore _store;
     private readonly AuditService _audit;
     private readonly LoggingService _log;
@@ -42,7 +45,8 @@ public sealed partial class ConnectionViewModel : ObservableObject
                     (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
                 {
                     _log.Log(LogLevel.Warn, "Invalid API Base URI format. Must be a valid HTTP/HTTPS URL.");
-                    // Don't update the value if invalid
+                    // Notify UI that we're keeping the old value
+                    OnPropertyChanged(nameof(ApiBaseUri));
                     return;
                 }
             }
@@ -60,11 +64,11 @@ public sealed partial class ConnectionViewModel : ObservableObject
         get => _accessToken;
         set
         {
-            // Basic token validation
+            // Basic token validation (Genesys Cloud OAuth tokens are typically 100+ characters)
             var token = value ?? "";
-            if (!string.IsNullOrWhiteSpace(token) && token.Length < 10)
+            if (!string.IsNullOrWhiteSpace(token) && token.Length < MinimumTokenLength)
             {
-                _log.Log(LogLevel.Warn, "Access token appears too short. Ensure you have a valid token.");
+                _log.Log(LogLevel.Warn, $"Access token appears too short (minimum {MinimumTokenLength} characters). Ensure you have a valid OAuth token.");
             }
             SetProperty(ref _accessToken, token);
         }
