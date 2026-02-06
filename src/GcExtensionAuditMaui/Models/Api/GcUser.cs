@@ -21,5 +21,38 @@ public sealed class GcUser
 
     [JsonPropertyName("addresses")]
     public List<GcUserAddress>? Addresses { get; set; }
+
+    [JsonPropertyName("station")]
+    public GcUserStation? Station { get; set; }
+
+    [JsonPropertyName("locations")]
+    public List<GcLocation>? Locations { get; set; }
+
+    [JsonPropertyName("dateLastLogin")]
+    public DateTime? DateLastLogin { get; set; }
+}
+
+public sealed class GcUserStation
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("selfUri")]
+    public string? SelfUri { get; set; }
+}
+
+public sealed class GcLocation
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("selfUri")]
+    public string? SelfUri { get; set; }
 }
 
