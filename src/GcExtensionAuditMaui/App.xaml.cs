@@ -6,6 +6,12 @@ namespace GcExtensionAuditMaui;
 
 public partial class App : Application
 {
+    // Window size constants
+    private const int DefaultWindowWidth = 1400;
+    private const int DefaultWindowHeight = 900;
+    private const int ErrorWindowWidth = 900;
+    private const int ErrorWindowHeight = 700;
+
     private readonly IServiceProvider _services;
     private readonly LoggingService _log;
 
@@ -26,8 +32,8 @@ public partial class App : Application
             return new Window(main)
             {
                 Title = "Genesys Cloud Extension Audit",
-                Width = 1400,
-                Height = 900,
+                Width = DefaultWindowWidth,
+                Height = DefaultWindowHeight,
             };
         }
         catch (Exception ex)
@@ -58,8 +64,8 @@ public partial class App : Application
             return new Window(fallback)
             {
                 Title = "Genesys Cloud Extension Audit (Startup Error)",
-                Width = 900,
-                Height = 700,
+                Width = ErrorWindowWidth,
+                Height = ErrorWindowHeight,
             };
         }
     }

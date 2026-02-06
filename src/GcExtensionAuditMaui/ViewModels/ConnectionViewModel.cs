@@ -9,6 +9,9 @@ namespace GcExtensionAuditMaui.ViewModels;
 
 public sealed partial class ConnectionViewModel : ObservableObject
 {
+    // Minimum reasonable token length for validation (OAuth tokens are typically much longer)
+    private const int MinimumTokenLength = 20;
+    
     private readonly ContextStore _store;
     private readonly AuditService _audit;
     private readonly LoggingService _log;
@@ -33,9 +36,24 @@ public sealed partial class ConnectionViewModel : ObservableObject
         get => _apiBaseUri;
         set
         {
-            if (SetProperty(ref _apiBaseUri, value))
+            // Normalize and validate the URI
+            var normalized = value?.Trim() ?? "";
+            if (!string.IsNullOrWhiteSpace(normalized))
             {
-                Preferences.Set(nameof(ApiBaseUri), value ?? "");
+                // Basic URI format validation
+                if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri) || 
+                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    _log.Log(LogLevel.Warn, "Invalid API Base URI format. Must be a valid HTTP/HTTPS URL.");
+                    // Notify UI that we're keeping the old value
+                    OnPropertyChanged(nameof(ApiBaseUri));
+                    return;
+                }
+            }
+            
+            if (SetProperty(ref _apiBaseUri, normalized))
+            {
+                Preferences.Set(nameof(ApiBaseUri), normalized);
             }
         }
     }
@@ -44,7 +62,16 @@ public sealed partial class ConnectionViewModel : ObservableObject
     public string AccessToken
     {
         get => _accessToken;
-        set => SetProperty(ref _accessToken, value ?? "");
+        set
+        {
+            // Basic token validation (Genesys Cloud OAuth tokens are typically 100+ characters)
+            var token = value ?? "";
+            if (!string.IsNullOrWhiteSpace(token) && token.Length < MinimumTokenLength)
+            {
+                _log.Log(LogLevel.Warn, $"Access token appears too short (minimum {MinimumTokenLength} characters). Ensure you have a valid OAuth token.");
+            }
+            SetProperty(ref _accessToken, token);
+        }
     }
 
     private bool _useEnvToken;

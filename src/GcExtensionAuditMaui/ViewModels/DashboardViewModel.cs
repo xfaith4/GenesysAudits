@@ -257,9 +257,15 @@ public sealed partial class DashboardViewModel : ObservableObject
         get => _sleepMsBetween;
         set
         {
-            if (SetProperty(ref _sleepMsBetween, value))
+            // Ensure non-negative values only
+            var sanitized = Math.Max(0, value);
+            if (sanitized != value)
             {
-                Preferences.Set(nameof(SleepMsBetween), value);
+                _log.Log(LogLevel.Warn, $"Sleep time must be non-negative. Adjusted from {value} to {sanitized}.");
+            }
+            if (SetProperty(ref _sleepMsBetween, sanitized))
+            {
+                Preferences.Set(nameof(SleepMsBetween), sanitized);
             }
         }
     }
@@ -270,9 +276,15 @@ public sealed partial class DashboardViewModel : ObservableObject
         get => _maxUpdates;
         set
         {
-            if (SetProperty(ref _maxUpdates, value))
+            // Ensure non-negative values only
+            var sanitized = Math.Max(0, value);
+            if (sanitized != value)
             {
-                Preferences.Set(nameof(MaxUpdates), value);
+                _log.Log(LogLevel.Warn, $"Max updates must be non-negative. Adjusted from {value} to {sanitized}.");
+            }
+            if (SetProperty(ref _maxUpdates, sanitized))
+            {
+                Preferences.Set(nameof(MaxUpdates), sanitized);
             }
         }
     }
@@ -283,9 +295,15 @@ public sealed partial class DashboardViewModel : ObservableObject
         get => _maxFailures;
         set
         {
-            if (SetProperty(ref _maxFailures, value))
+            // Ensure non-negative values only
+            var sanitized = Math.Max(0, value);
+            if (sanitized != value)
             {
-                Preferences.Set(nameof(MaxFailures), value);
+                _log.Log(LogLevel.Warn, $"Max failures must be non-negative. Adjusted from {value} to {sanitized}.");
+            }
+            if (SetProperty(ref _maxFailures, sanitized))
+            {
+                Preferences.Set(nameof(MaxFailures), sanitized);
             }
         }
     }
