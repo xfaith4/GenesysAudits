@@ -11,20 +11,38 @@ This addon includes:
 
 ## .NET MAUI app (recommended)
 
+### Platform Support
+
+⚠️ **Windows Only** - This application is built with .NET MAUI and targets Windows exclusively. 
+
+**Cannot build or run on:**
+- Linux
+- macOS (without Windows VM)
+- Other platforms
+
+### Prerequisites
+
+**Required:**
+- Windows 10 version 1809 or higher (10.0.17763.0)
+- .NET 9 SDK or later
+- .NET MAUI workloads installed:
+  ```powershell
+  dotnet workload install maui maui-windows
+  ```
+
+**Optional (for publishing):**
+- PowerShell 5.1 or later (for automated publish scripts)
+
 ### Build / Run (Windows)
 
-Prereqs:
-
-- .NET SDK with MAUI workloads (`maui`, `maui-windows`)
-
-Commands (from `Addons/ExtensionAudit`):
+Commands (from repository root):
 
 - `dotnet build GcExtensionAuditMaui.sln -c Debug -f net9.0-windows10.0.19041.0`
-- `dotnet run --project src/GcExtensionAuditMaui/GcExtensionAuditMaui.csproj -c Debug`
+- `dotnet run --project src/GcExtensionAuditMaui/GcExtensionAuditMaui.csproj -c Debug -f net9.0-windows10.0.19041.0`
 
-Note:
-
-- This project is Windows-only, so you should not see Android SDK build errors.
+**Troubleshooting:**
+- If you see Tizen workload errors, this is expected on Windows-only builds and can be ignored
+- Ensure you have installed the `maui-windows` workload: `dotnet workload install maui-windows`
 
 ### Publish to an EXE (Windows)
 
@@ -144,7 +162,28 @@ Exports include:
 - `GET /api/v2/telephony/providers/edges/extensions?pageSize={N}&pageNumber={p}`
 - `GET /api/v2/telephony/providers/edges/dids?pageSize={N}&pageNumber={p}`
 
-Authentication:
+### Authentication & Required Scopes
+
+**Access Token:**
+
+The application requires a Genesys Cloud OAuth access token with the following scopes:
+- `users:readonly` - To read user profiles
+- `telephony:readonly` - To read extension/DID inventory
+- `telephony:admin` - To patch user extensions (if using repair functionality)
+
+**How to generate a token:**
+1. Log in to Genesys Cloud: `https://apps.{your-region}.pure.cloud`
+2. Navigate to Admin → Integrations
+3. Create or use an OAuth client with the required scopes
+4. Generate an access token
+
+**Environment Variables (Optional):**
+
+The app can read the access token from the `GC_ACCESS_TOKEN` environment variable if you check "Use GC_ACCESS_TOKEN from environment" in the UI.
+
+See `.env.example` in the repository root for reference.
+
+Authentication header format:
 
 - `Authorization: Bearer <token>`
 
