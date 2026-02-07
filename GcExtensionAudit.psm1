@@ -1424,6 +1424,7 @@ function Export-GcAuditWorkbook {
     [Parameter(Mandatory)] [string] $Path,
     [Parameter()] $DidReport,
     [Parameter()] [switch] $SkipEmptySheets
+    
   )
 
   Import-Module ImportExcel -ErrorAction Stop
