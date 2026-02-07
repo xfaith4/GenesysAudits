@@ -1094,8 +1094,7 @@ public sealed partial class DashboardViewModel : ObservableObject
             
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                AuditLogRows.Clear();
-                AuditLogRows.AddRange(rows);
+                AuditLogRows.ReplaceRange(rows);
                 AuditSummaryText = $"Audit logs: {rows.Count} events fetched ({state.TotalPages} pages)";
                 LastAuditAt = DateTime.Now;
             });
@@ -1177,8 +1176,7 @@ public sealed partial class DashboardViewModel : ObservableObject
             
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                AuditLogRows.Clear();
-                AuditLogRows.AddRange(rows);
+                AuditLogRows.ReplaceRange(rows);
                 AuditSummaryText = $"Realtime related: {rows.Count} events";
                 LastAuditAt = DateTime.Now;
             });
@@ -1528,5 +1526,14 @@ public sealed partial class DashboardViewModel : ObservableObject
             t = t.Substring("Bearer ".Length).Trim();
         }
         return t;
+    }
+
+    private string GetAccessToken()
+    {
+        var token = UseEnvToken
+            ? (Environment.GetEnvironmentVariable("GC_ACCESS_TOKEN") ?? "")
+            : AccessToken;
+
+        return NormalizeToken(token);
     }
 }

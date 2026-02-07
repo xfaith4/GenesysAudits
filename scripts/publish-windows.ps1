@@ -60,10 +60,17 @@ dotnet publish $proj `
   -p:PublishSingleFile=$singleFileArg `
   -p:IncludeNativeLibrariesForSelfExtract=$singleFileArg `
   -o $outDir
+if ($LASTEXITCODE -ne 0)
+{
+  throw "dotnet publish failed with exit code $LASTEXITCODE."
+}
 
 function Get-DirBytes([string] $path)
 {
-  return (Get-ChildItem -Recurse -Force -LiteralPath $path | Measure-Object -Property Length -Sum).Sum
+  $total = 0
+  Get-ChildItem -Recurse -Force -LiteralPath $path -File -ErrorAction SilentlyContinue |
+    ForEach-Object { $total += $_.Length }
+  return $total
 }
 
 if (-not $KeepPdb)
