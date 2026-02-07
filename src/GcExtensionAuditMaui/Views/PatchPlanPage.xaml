@@ -96,7 +96,16 @@
 
                     <Label Grid.Row="1" Grid.Column="0" Text="Confirm" VerticalTextAlignment="Center" />
                     <Entry Grid.Row="1" Grid.Column="1" Text="{Binding ConfirmText}" WidthRequest="140" />
-                    <Label Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7" Text="⚠️ For REAL changes: uncheck WhatIf, type PATCH, and confirm TWICE." FontSize="12" TextColor="#DC2626" FontAttributes="Bold" VerticalTextAlignment="Center" />
+                    
+                    <HorizontalStackLayout Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Spacing="8">
+                        <CheckBox IsChecked="{Binding EnablePostPatchVerification}" />
+                        <Label Text="Enable post-patch verification (compares actual state vs expected)" 
+                               VerticalTextAlignment="Center" 
+                               FontSize="12" 
+                               TextColor="#374151" />
+                    </HorizontalStackLayout>
+                    
+                    <Label Grid.Row="1" Grid.Column="5" Grid.ColumnSpan="5" Text="⚠️ For REAL changes: uncheck WhatIf, type PATCH, and confirm TWICE." FontSize="12" TextColor="#DC2626" FontAttributes="Bold" VerticalTextAlignment="Center" />
                 </Grid>
             </VerticalStackLayout>
         </Frame>
@@ -151,6 +160,70 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <!-- Post-Patch Verification Results -->
+        <Frame BorderColor="#DADDE2" BackgroundColor="#F0FDF4" Padding="10">
+            <Frame.Triggers>
+                <DataTrigger TargetType="Frame" Binding="{Binding VerificationSummary}" Value="">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+            </Frame.Triggers>
+            <VerticalStackLayout Spacing="10">
+                <Label Text="✓ Post-Patch Verification Results" FontAttributes="Bold" FontSize="14" TextColor="#166534" />
+                <Label Text="{Binding VerificationSummary}" FontSize="12" TextColor="#374151" LineBreakMode="WordWrap" />
+                
+                <Label Text="Verification Details:" FontAttributes="Bold" FontSize="12" />
+                <ScrollView Orientation="Horizontal">
+                    <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
+                        <Grid Grid.Row="0" ColumnDefinitions="200,140,140,140,60,300" Padding="6" BackgroundColor="#E5E7EB">
+                            <Label Grid.Column="0" Text="User" FontAttributes="Bold" />
+                            <Label Grid.Column="1" Text="Expected" FontAttributes="Bold" />
+                            <Label Grid.Column="2" Text="Actual" FontAttributes="Bold" />
+                            <Label Grid.Column="3" Text="User ID" FontAttributes="Bold" />
+                            <Label Grid.Column="4" Text="Status" FontAttributes="Bold" />
+                            <Label Grid.Column="5" Text="Notes" FontAttributes="Bold" />
+                        </Grid>
+
+                        <CollectionView Grid.Row="1" ItemsSource="{Binding VerificationItems}" HeightRequest="200">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="patch:VerificationItem">
+                                    <Grid ColumnDefinitions="200,140,140,140,60,300" Padding="6">
+                                        <Label Grid.Column="0" Text="{Binding UserDisplay}" />
+                                        <Label Grid.Column="1" Text="{Binding ExpectedExtension}" />
+                                        <Label Grid.Column="2" Text="{Binding ActualExtension}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Mismatch">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                    <Setter Property="FontAttributes" Value="Bold" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Confirmed">
+                                                    <Setter Property="TextColor" Value="#16A34A" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                                        <Label Grid.Column="4" Text="{Binding Status}" FontSize="11">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Confirmed">
+                                                    <Setter Property="TextColor" Value="#16A34A" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Mismatch">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Error">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label Grid.Column="5" Text="{Binding ErrorMessage}" FontSize="11" TextColor="#6B7280" LineBreakMode="TailTruncation" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Grid>
+                </ScrollView>
+            </VerticalStackLayout>
+        </Frame>
 
     </VerticalStackLayout>
 </ContentPage>

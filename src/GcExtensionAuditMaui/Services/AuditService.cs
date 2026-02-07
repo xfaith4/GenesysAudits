@@ -1091,4 +1091,150 @@ public sealed class AuditService
             Failed = failed,
         };
     }
+
+    /// <summary>
+    /// Verifies patch results by re-fetching users and comparing actual state against expected state.
+    /// This provides confirmation that patches were applied successfully.
+    /// </summary>
+    public async Task<VerificationResult> VerifyPatchResultsAsync(
+        AuditContext context,
+        IReadOnlyList<PatchUpdatedRow> patchedUsers,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        var items = new List<VerificationItem>();
+        var confirmed = 0;
+        var mismatched = 0;
+        var userNotFound = 0;
+
+        _log.Log(LogLevel.Info, "Starting post-patch verification", new { Count = patchedUsers.Count });
+
+        for (int i = 0; i < patchedUsers.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var patched = patchedUsers[i];
+
+            progress?.Report($"Verifying {i + 1}/{patchedUsers.Count}: {patched.User ?? patched.UserId}");
+
+            try
+            {
+                var user = await _api.GetUserAsync(context.ApiBaseUri, context.AccessToken, patched.UserId, ct).ConfigureAwait(false);
+                
+                if (user?.Id is null)
+                {
+                    userNotFound++;
+                    items.Add(new VerificationItem
+                    {
+                        UserId = patched.UserId,
+                        UserDisplay = patched.User,
+                        ExpectedExtension = patched.Extension,
+                        ActualExtension = null,
+                        Status = VerificationStatus.UserNotFound,
+                        ErrorMessage = "User not found during verification"
+                    });
+                    continue;
+                }
+
+                string? actualExtension;
+                if (context.AuditKind == AuditNumberKind.Did)
+                {
+                    actualExtension = GetUserProfileDid(user);
+                }
+                else
+                {
+                    actualExtension = GetUserProfileExtension(user);
+                }
+
+                // Handle cleared extensions - both should be null/empty
+                var expectedIsCleared = string.IsNullOrWhiteSpace(patched.Extension) || patched.Extension == "(cleared)";
+                var actualIsCleared = string.IsNullOrWhiteSpace(actualExtension);
+
+                bool matches;
+                if (expectedIsCleared && actualIsCleared)
+                {
+                    matches = true;
+                }
+                else if (expectedIsCleared || actualIsCleared)
+                {
+                    matches = false;
+                }
+                else
+                {
+                    matches = string.Equals(patched.Extension, actualExtension, StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (matches)
+                {
+                    confirmed++;
+                    items.Add(new VerificationItem
+                    {
+                        UserId = patched.UserId,
+                        UserDisplay = patched.User,
+                        ExpectedExtension = patched.Extension,
+                        ActualExtension = actualExtension ?? "(cleared)",
+                        Status = VerificationStatus.Confirmed
+                    });
+                }
+                else
+                {
+                    mismatched++;
+                    items.Add(new VerificationItem
+                    {
+                        UserId = patched.UserId,
+                        UserDisplay = patched.User,
+                        ExpectedExtension = patched.Extension,
+                        ActualExtension = actualExtension ?? "(cleared)",
+                        Status = VerificationStatus.Mismatch,
+                        ErrorMessage = $"Expected '{patched.Extension}' but found '{actualExtension ?? "(none)"}'"
+                    });
+                    
+                    _log.Log(LogLevel.Warn, "Verification mismatch", new
+                    {
+                        UserId = patched.UserId,
+                        Expected = patched.Extension,
+                        Actual = actualExtension ?? "(none)"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                items.Add(new VerificationItem
+                {
+                    UserId = patched.UserId,
+                    UserDisplay = patched.User,
+                    ExpectedExtension = patched.Extension,
+                    ActualExtension = null,
+                    Status = VerificationStatus.Error,
+                    ErrorMessage = ex.Message
+                });
+                
+                _log.Log(LogLevel.Error, "Verification error", new { UserId = patched.UserId }, ex: ex);
+            }
+
+            // Small delay to respect rate limits
+            if (i < patchedUsers.Count - 1)
+            {
+                await Task.Delay(100, ct).ConfigureAwait(false);
+            }
+        }
+
+        var result = new VerificationResult
+        {
+            TotalVerified = patchedUsers.Count,
+            Confirmed = confirmed,
+            Mismatched = mismatched,
+            UserNotFound = userNotFound,
+            Items = items
+        };
+
+        _log.Log(LogLevel.Info, "Post-patch verification complete", new
+        {
+            Total = result.TotalVerified,
+            Confirmed = result.Confirmed,
+            Mismatched = result.Mismatched,
+            UserNotFound = result.UserNotFound
+        });
+
+        return result;
+    }
 }

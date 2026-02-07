@@ -45,6 +45,8 @@ public sealed partial class PatchPlanViewModel : ObservableObject
         IncludeDuplicateUser = Preferences.Get(nameof(IncludeDuplicateUser), true);
         IncludeDiscrepancy = Preferences.Get(nameof(IncludeDiscrepancy), true);
         IncludeReassert = Preferences.Get(nameof(IncludeReassert), false);
+        
+        EnablePostPatchVerification = Preferences.Get(nameof(EnablePostPatchVerification), true);
     }
 
     private bool _whatIf = true;
@@ -209,6 +211,27 @@ public sealed partial class PatchPlanViewModel : ObservableObject
     public ObservableCollection<PatchUpdatedRow> Updated { get; } = new();
     public ObservableCollection<PatchSkippedRow> Skipped { get; } = new();
     public ObservableCollection<PatchFailedRow> Failed { get; } = new();
+    public ObservableCollection<VerificationItem> VerificationItems { get; } = new();
+
+    private bool _enablePostPatchVerification = true;
+    public bool EnablePostPatchVerification
+    {
+        get => _enablePostPatchVerification;
+        set
+        {
+            if (SetProperty(ref _enablePostPatchVerification, value))
+            {
+                Preferences.Set(nameof(EnablePostPatchVerification), value);
+            }
+        }
+    }
+
+    private string _verificationSummary = "";
+    public string VerificationSummary
+    {
+        get => _verificationSummary;
+        set => SetProperty(ref _verificationSummary, value ?? "");
+    }
 
     [RelayCommand(CanExecute = nameof(CanGeneratePlan))]
     private async Task GeneratePlanAsync()
@@ -341,6 +364,59 @@ public sealed partial class PatchPlanViewModel : ObservableObject
             foreach (var r in result.Updated) { Updated.Add(r); }
             foreach (var r in result.Skipped) { Skipped.Add(r); }
             foreach (var r in result.Failed) { Failed.Add(r); }
+
+            // Post-patch verification - only run if REAL patches were applied and verification is enabled
+            if (!WhatIf && EnablePostPatchVerification && result.Updated.Count > 0)
+            {
+                StatusText = "Running post-patch verification…";
+                VerificationItems.Clear();
+                
+                try
+                {
+                    var verificationResult = await _audit.VerifyPatchResultsAsync(
+                        _store.Context, 
+                        result.Updated, 
+                        progress, 
+                        _cts.Token);
+                    
+                    foreach (var item in verificationResult.Items)
+                    {
+                        VerificationItems.Add(item);
+                    }
+                    
+                    VerificationSummary = 
+                        $"✓ Verified {verificationResult.TotalVerified} patches: " +
+                        $"{verificationResult.Confirmed} confirmed, " +
+                        $"{verificationResult.Mismatched} mismatched, " +
+                        $"{verificationResult.UserNotFound} users not found";
+                    
+                    if (verificationResult.Mismatched > 0)
+                    {
+                        StatusText = $"⚠️ Patch complete with {verificationResult.Mismatched} verification mismatch(es). See details below.";
+                    }
+                    else
+                    {
+                        StatusText = $"✓ Patch complete. All {verificationResult.Confirmed} changes verified successfully.";
+                    }
+                }
+                catch (Exception vEx)
+                {
+                    VerificationSummary = $"Verification failed: {vEx.Message}";
+                    StatusText = "Patch complete, but verification encountered errors.";
+                }
+            }
+            else if (WhatIf)
+            {
+                StatusText = "WhatIf complete (no real changes made).";
+                VerificationSummary = "";
+                VerificationItems.Clear();
+            }
+            else
+            {
+                StatusText = "Patch complete.";
+                VerificationSummary = EnablePostPatchVerification ? "No patches applied to verify." : "Post-patch verification disabled.";
+                VerificationItems.Clear();
+            }
 
             var outDir = await _export.ExportPatchAsync(_store.Context, result, _audit.Api.Stats, CancellationToken.None);
             _store.LastOutputFolder = outDir;
