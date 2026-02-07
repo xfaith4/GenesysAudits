@@ -4,13 +4,14 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:plan="clr-namespace:GcExtensionAuditMaui.Models.Planning"
+    xmlns:logs="clr-namespace:GcExtensionAuditMaui.Models.AuditLogs"
     xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
     x:DataType="vm:DashboardViewModel">
 
     <Frame Style="{StaticResource PanelFrameStyle}">
         <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{StaticResource Space.2}">
-            <!-- Command surface for results -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Space.2}" RowDefinitions="Auto">
+            <!-- Command surface for results - Numbers Mode -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="{StaticResource Space.2}" RowDefinitions="Auto" IsVisible="{Binding IsNumbersMode}">
                 <Label Grid.Column="0" Text="Results" Style="{StaticResource H2LabelStyle}" VerticalOptions="Center" />
 
                 <Frame Grid.Column="1" Style="{StaticResource BadgeFrameStyle}" VerticalOptions="Center">
@@ -57,9 +58,19 @@
                 </Frame>
             </Grid>
 
-            <!-- Table header -->
+            <!-- Command surface for results - Logs Mode -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="{StaticResource Space.2}" RowDefinitions="Auto" IsVisible="{Binding IsLogsMode}">
+                <Label Grid.Column="0" Text="Audit Logs" Style="{StaticResource H2LabelStyle}" VerticalOptions="Center" />
+
+                <Frame Grid.Column="1" Style="{StaticResource BadgeFrameStyle}" VerticalOptions="Center">
+                    <Label Text="{Binding AuditLogRows.Count}" Style="{StaticResource CaptionLabelStyle}" />
+                </Frame>
+            </Grid>
+
+            <!-- Table header - Numbers Mode -->
             <Grid Grid.Row="1" ColumnDefinitions="100,*,90,140,110" Padding="{StaticResource Pad.Cell}"
-                  BackgroundColor="{AppThemeBinding Light={StaticResource Color.TableHeaderBg.Light}, Dark={StaticResource Color.TableHeaderBg.Dark}}">
+                  BackgroundColor="{AppThemeBinding Light={StaticResource Color.TableHeaderBg.Light}, Dark={StaticResource Color.TableHeaderBg.Dark}}"
+                  IsVisible="{Binding IsNumbersMode}">
                 <Label Grid.Column="0" Text="Category" Style="{StaticResource TableHeaderLabelStyle}" />
                 <Label Grid.Column="1" Text="User / Notes" Style="{StaticResource TableHeaderLabelStyle}" />
                 <Label Grid.Column="2" Text="Current" Style="{StaticResource TableHeaderLabelStyle}" />
@@ -67,8 +78,20 @@
                 <Label Grid.Column="4" Text="Target" Style="{StaticResource TableHeaderLabelStyle}" />
             </Grid>
 
-            <!-- Results -->
-            <Grid Grid.Row="2">
+            <!-- Table header - Logs Mode -->
+            <Grid Grid.Row="1" ColumnDefinitions="140,100,120,*,120,150" Padding="{StaticResource Pad.Cell}"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource Color.TableHeaderBg.Light}, Dark={StaticResource Color.TableHeaderBg.Dark}}"
+                  IsVisible="{Binding IsLogsMode}">
+                <Label Grid.Column="0" Text="Timestamp" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="1" Text="Action" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="2" Text="Entity Type" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="3" Text="Entity ID" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="4" Text="Service" Style="{StaticResource TableHeaderLabelStyle}" />
+                <Label Grid.Column="5" Text="User" Style="{StaticResource TableHeaderLabelStyle}" />
+            </Grid>
+
+            <!-- Results - Numbers Mode -->
+            <Grid Grid.Row="2" IsVisible="{Binding IsNumbersMode}">
                 <CollectionView
                     ItemsSource="{Binding PlanItems}"
                     SelectionMode="Single"
@@ -109,6 +132,34 @@
                                 <Label Grid.Column="2" Text="{Binding CurrentExtension}" Style="{StaticResource TableCellLabelStyle}" />
                                 <Label Grid.Column="3" Text="{Binding Action}" Style="{StaticResource TableCellLabelStyle}" />
                                 <Label Grid.Column="4" Text="{Binding RecommendedExtension}" Style="{StaticResource TableCellLabelStyle}" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+
+            <!-- Results - Logs Mode -->
+            <Grid Grid.Row="2" IsVisible="{Binding IsLogsMode}">
+                <CollectionView
+                    ItemsSource="{Binding AuditLogRows}"
+                    SelectionMode="None">
+                    <CollectionView.EmptyView>
+                        <Frame Style="{StaticResource InsetFrameStyle}" VerticalOptions="Center" HorizontalOptions="Center">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="No audit logs yet" Style="{StaticResource H2LabelStyle}" HorizontalTextAlignment="Center" />
+                                <Label Text="Configure query parameters and click Run Query to fetch audit logs." Style="{StaticResource CaptionLabelStyle}" HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="logs:AuditLogRow">
+                            <Grid Padding="{StaticResource Pad.Cell}" ColumnDefinitions="140,100,120,*,120,150">
+                                <Label Grid.Column="0" Text="{Binding TimestampFormatted}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="1" Text="{Binding Action}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="2" Text="{Binding EntityType}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="3" Text="{Binding EntityId}" Style="{StaticResource TableCellLabelStyle}" LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="4" Text="{Binding ServiceName}" Style="{StaticResource TableCellLabelStyle}" />
+                                <Label Grid.Column="5" Text="{Binding UserDisplay}" Style="{StaticResource TableCellLabelStyle}" LineBreakMode="TailTruncation" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

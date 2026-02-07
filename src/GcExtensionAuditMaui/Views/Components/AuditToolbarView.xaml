@@ -7,7 +7,7 @@
     x:DataType="vm:DashboardViewModel">
 
     <Frame Style="{StaticResource PanelFrameStyle}">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.3}" RowSpacing="{StaticResource Space.2}">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.3}" RowSpacing="{StaticResource Space.2}">
             <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
                 <Label Text="{Binding AuditTitle}" Style="{StaticResource H1LabelStyle}" />
                 <Label Text="{Binding ApiBaseUri}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
@@ -20,8 +20,17 @@
                 </HorizontalStackLayout>
             </Frame>
 
-            <!-- Command bar -->
-            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.3}">
+            <!-- Workstream selector -->
+            <Frame Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource BadgeFrameStyle}" Padding="8,4">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                    <Label Text="Mode:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
+                    <RadioButton Content="Numbers (Ext/DID)" GroupName="WorkstreamKind" IsChecked="{Binding IsNumbersMode}" />
+                    <RadioButton Content="Audit Logs" GroupName="WorkstreamKind" IsChecked="{Binding IsLogsMode}" />
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- Command bar - Numbers Mode -->
+            <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space.3}" IsVisible="{Binding IsNumbersMode}">
                 <HorizontalStackLayout Grid.Column="0" Spacing="{StaticResource Space.2}">
                     <Button Text="Build Context" Command="{Binding BuildContextCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
                     <Button Text="Run Audit" Command="{Binding RunAuditCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="10,8" />
@@ -45,8 +54,46 @@
                 </HorizontalStackLayout>
             </Grid>
 
+            <!-- Command bar - Logs Mode -->
+            <Grid Grid.Row="2" Grid.ColumnSpan="2" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.3}" RowSpacing="{StaticResource Space.2}" IsVisible="{Binding IsLogsMode}">
+                <!-- Query controls row 1 -->
+                <!-- Note: DatePicker only supports date selection. Time defaults to start/end of day in ViewModel -->
+                <HorizontalStackLayout Grid.Row="0" Spacing="{StaticResource Space.2}">
+                    <Label Text="Interval Start:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
+                    <DatePicker Date="{Binding LogQueryIntervalStart}" Format="yyyy-MM-dd" />
+                    
+                    <Label Text="Interval End:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" Margin="10,0,0,0" />
+                    <DatePicker Date="{Binding LogQueryIntervalEnd}" Format="yyyy-MM-dd" />
+                    
+                    <Button Text="Load Services" Command="{Binding LoadServiceMappingCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="8,6" Margin="10,0,0,0" />
+                </HorizontalStackLayout>
+
+                <!-- Query controls row 2 -->
+                <HorizontalStackLayout Grid.Row="1" Spacing="{StaticResource Space.2}">
+                    <Label Text="Service:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
+                    <Entry Text="{Binding LogQueryServiceName}" Placeholder="Service name (optional)" WidthRequest="150" />
+                    
+                    <Label Text="User ID:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" Margin="10,0,0,0" />
+                    <Entry Text="{Binding LogQueryUserId}" Placeholder="User ID (optional)" WidthRequest="150" />
+                    
+                    <Label Text="Action:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" Margin="10,0,0,0" />
+                    <Entry Text="{Binding LogQueryAction}" Placeholder="Action (optional)" WidthRequest="120" />
+                    
+                    <CheckBox IsChecked="{Binding LogQueryExpandUser}" VerticalOptions="Center" Margin="10,0,0,0" />
+                    <Label Text="Expand User" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <!-- Action buttons row 3 -->
+                <HorizontalStackLayout Grid.Row="2" Spacing="{StaticResource Space.2}">
+                    <Button Text="Run Query" Command="{Binding RunAuditCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Cancel" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                    <Button Text="Export" Command="{Binding ExportAuditReportCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" Margin="10,0,0,0" />
+                    <Button Text="Open Out" Command="{Binding OpenOutCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,8" />
+                </HorizontalStackLayout>
+            </Grid>
+
             <!-- Status strip -->
-            <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.3}">
+            <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space.3}">
                 <Label Grid.Column="0" Text="{Binding ContextSummaryText}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" />
                 <Label Grid.Column="1" Text="{Binding AuditSummaryText}" Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" HorizontalTextAlignment="End" />
             </Grid>

@@ -26,6 +26,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     private readonly PlatformOpenService _open;
     private readonly LoggingService _log;
     private readonly IServiceProvider _services;
+    private readonly AuditLogsService _auditLogs;
 
     private CancellationTokenSource? _cts;
     private FixupPlan? _plan;
@@ -39,6 +40,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         DialogService dialogs,
         PlatformOpenService open,
         LoggingService log,
+        AuditLogsService auditLogs,
         IServiceProvider services)
     {
         _audit = audit;
@@ -49,6 +51,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         _dialogs = dialogs;
         _open = open;
         _log = log;
+        _auditLogs = auditLogs;
         _services = services;
 
         AuditKind = (AuditNumberKind)Preferences.Get(nameof(AuditKind), (int)AuditNumberKind.Extension);
@@ -71,6 +74,162 @@ public sealed partial class DashboardViewModel : ObservableObject
 
         AutoScrollLog = Preferences.Get(nameof(AutoScrollLog), true);
         IsLogExpanded = Preferences.Get(nameof(IsLogExpanded), true);
+
+        SelectedWorkstream = (AuditWorkstreamKind)Preferences.Get(nameof(SelectedWorkstream), (int)AuditWorkstreamKind.Numbers);
+        
+        // Initialize audit logs query with defaults
+        LogQueryIntervalStart = DateTime.UtcNow.AddHours(-1);
+        LogQueryIntervalEnd = DateTime.UtcNow;
+        LogQueryExpandUser = true;
+    }
+
+    // Workstream selection
+    private AuditWorkstreamKind _selectedWorkstream = AuditWorkstreamKind.Numbers;
+    public AuditWorkstreamKind SelectedWorkstream
+    {
+        get => _selectedWorkstream;
+        set
+        {
+            if (IsBusy) { return; }
+            if (SetProperty(ref _selectedWorkstream, value))
+            {
+                Preferences.Set(nameof(SelectedWorkstream), (int)value);
+                OnPropertyChanged(nameof(IsNumbersMode));
+                OnPropertyChanged(nameof(IsLogsMode));
+                OnPropertyChanged(nameof(AuditTitle));
+            }
+        }
+    }
+
+    public bool IsNumbersMode
+    {
+        get => SelectedWorkstream == AuditWorkstreamKind.Numbers;
+        set { if (value) { SelectedWorkstream = AuditWorkstreamKind.Numbers; } }
+    }
+
+    public bool IsLogsMode
+    {
+        get => SelectedWorkstream == AuditWorkstreamKind.Logs;
+        set { if (value) { SelectedWorkstream = AuditWorkstreamKind.Logs; } }
+    }
+
+    // Audit Logs state
+    private Models.AuditLogs.AuditLogState? _auditLogState;
+    public Models.AuditLogs.AuditLogState? AuditLogState
+    {
+        get => _auditLogState;
+        set => SetProperty(ref _auditLogState, value);
+    }
+
+    public ObservableRangeCollection<Models.AuditLogs.AuditLogRow> AuditLogRows { get; } = new();
+
+    // Audit Logs query builder properties
+    private DateTime _logQueryIntervalStart;
+    public DateTime LogQueryIntervalStart
+    {
+        get => _logQueryIntervalStart;
+        set => SetProperty(ref _logQueryIntervalStart, value);
+    }
+
+    private DateTime _logQueryIntervalEnd;
+    public DateTime LogQueryIntervalEnd
+    {
+        get => _logQueryIntervalEnd;
+        set => SetProperty(ref _logQueryIntervalEnd, value);
+    }
+
+    private string _logQueryServiceName = "";
+    public string LogQueryServiceName
+    {
+        get => _logQueryServiceName;
+        set => SetProperty(ref _logQueryServiceName, value ?? "");
+    }
+
+    private string _logQueryUserId = "";
+    public string LogQueryUserId
+    {
+        get => _logQueryUserId;
+        set => SetProperty(ref _logQueryUserId, value ?? "");
+    }
+
+    private string _logQueryClientId = "";
+    public string LogQueryClientId
+    {
+        get => _logQueryClientId;
+        set => SetProperty(ref _logQueryClientId, value ?? "");
+    }
+
+    private string _logQueryAction = "";
+    public string LogQueryAction
+    {
+        get => _logQueryAction;
+        set => SetProperty(ref _logQueryAction, value ?? "");
+    }
+
+    private string _logQueryEntityType = "";
+    public string LogQueryEntityType
+    {
+        get => _logQueryEntityType;
+        set => SetProperty(ref _logQueryEntityType, value ?? "");
+    }
+
+    private string _logQueryEntityId = "";
+    public string LogQueryEntityId
+    {
+        get => _logQueryEntityId;
+        set => SetProperty(ref _logQueryEntityId, value ?? "");
+    }
+
+    private bool _logQueryExpandUser = true;
+    public bool LogQueryExpandUser
+    {
+        get => _logQueryExpandUser;
+        set => SetProperty(ref _logQueryExpandUser, value);
+    }
+
+    // Service mapping for Logs
+    private Models.AuditLogs.ServiceMappingResponse? _serviceMappingResponse;
+    public Models.AuditLogs.ServiceMappingResponse? ServiceMappingResponse
+    {
+        get => _serviceMappingResponse;
+        set
+        {
+            if (SetProperty(ref _serviceMappingResponse, value))
+            {
+                OnPropertyChanged(nameof(ServiceNames));
+            }
+        }
+    }
+
+    public ObservableCollection<string> ServiceNames
+    {
+        get
+        {
+            var names = new ObservableCollection<string>();
+            if (ServiceMappingResponse?.Entities != null)
+            {
+                foreach (var entity in ServiceMappingResponse.Entities.OrderBy(e => e.DisplayName ?? e.Name))
+                {
+                    names.Add(entity.DisplayName ?? entity.Name);
+                }
+            }
+            return names;
+        }
+    }
+
+    // Realtime related query properties
+    private string _realtimeAuditId = "";
+    public string RealtimeAuditId
+    {
+        get => _realtimeAuditId;
+        set => SetProperty(ref _realtimeAuditId, value ?? "");
+    }
+
+    private string _realtimeTrustorOrgId = "";
+    public string RealtimeTrustorOrgId
+    {
+        get => _realtimeTrustorOrgId;
+        set => SetProperty(ref _realtimeTrustorOrgId, value ?? "");
     }
 
     // Connection / context
@@ -120,8 +279,17 @@ public sealed partial class DashboardViewModel : ObservableObject
     }
 
     public string AuditTitle
-        => RunBothAudits ? "Genesys Audits - Combined (Extensions + DIDs)" 
-            : (AuditKind == AuditNumberKind.Did ? "Genesys Audits - DID" : "Genesys Audits - Extension");
+    {
+        get
+        {
+            if (SelectedWorkstream == AuditWorkstreamKind.Logs)
+            {
+                return "Genesys Audits - Audit Logs";
+            }
+            return RunBothAudits ? "Genesys Audits - Combined (Extensions + DIDs)" 
+                : (AuditKind == AuditNumberKind.Did ? "Genesys Audits - DID" : "Genesys Audits - Extension");
+        }
+    }
 
     private string _apiBaseUri = "";
     public string ApiBaseUri
@@ -620,6 +788,13 @@ public sealed partial class DashboardViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRunAudit))]
     private async Task RunAuditAsync()
     {
+        if (SelectedWorkstream == AuditWorkstreamKind.Logs)
+        {
+            await RunAuditLogsQueryAsync();
+            return;
+        }
+
+        // Numbers mode - existing logic
         if (_store.Context is null)
         {
             await BuildContextAsync();
@@ -866,9 +1041,177 @@ public sealed partial class DashboardViewModel : ObservableObject
 
     private bool CanCancel() => IsBusy;
 
+    // Audit Logs commands
+
+    private async Task RunAuditLogsQueryAsync()
+    {
+        // Validate inputs
+        if (LogQueryIntervalEnd <= LogQueryIntervalStart)
+        {
+            await _dialogs.AlertAsync("Invalid Interval", "Interval End must be after Interval Start.");
+            return;
+        }
+
+        var token = GetAccessToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            StatusText = "Access token missing.";
+            return;
+        }
+
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+        StatusText = "Running audit logs query...";
+
+        try
+        {
+            var request = new Models.AuditLogs.AuditLogQueryRequest
+            {
+                IntervalStart = LogQueryIntervalStart.ToUniversalTime(),
+                IntervalEnd = LogQueryIntervalEnd.ToUniversalTime(),
+                ServiceName = string.IsNullOrWhiteSpace(LogQueryServiceName) ? null : LogQueryServiceName,
+                UserId = string.IsNullOrWhiteSpace(LogQueryUserId) ? null : LogQueryUserId,
+                ClientId = string.IsNullOrWhiteSpace(LogQueryClientId) ? null : LogQueryClientId,
+                Action = string.IsNullOrWhiteSpace(LogQueryAction) ? null : LogQueryAction,
+                EntityType = string.IsNullOrWhiteSpace(LogQueryEntityType) ? null : LogQueryEntityType,
+                EntityId = string.IsNullOrWhiteSpace(LogQueryEntityId) ? null : LogQueryEntityId,
+                ExpandUser = LogQueryExpandUser
+            };
+
+            _log.Log(LogLevel.Info, "Starting audit logs query", new
+            {
+                request.IntervalStart,
+                request.IntervalEnd,
+                request.ServiceName
+            });
+
+            var state = await _auditLogs.RunStandardQueryAsync(ApiBaseUri, token, request, _cts.Token);
+            
+            AuditLogState = state;
+
+            // Convert to display rows
+            var rows = state.RawEntities.Select(Models.AuditLogs.AuditLogRow.FromEntity).ToList();
+            
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                AuditLogRows.Clear();
+                AuditLogRows.AddRange(rows);
+                AuditSummaryText = $"Audit logs: {rows.Count} events fetched ({state.TotalPages} pages)";
+                LastAuditAt = DateTime.Now;
+            });
+
+            StatusText = $"Audit logs query complete. {rows.Count} events.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Audit logs query canceled.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Audit logs query failed: {ex.Message}";
+            _log.Log(LogLevel.Error, "Audit logs query failed", new { Error = ex.Message, Exception = ex.ToString() });
+            await _dialogs.AlertAsync("Query Failed", $"Failed to run audit logs query:\n{ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadServiceMappingAsync()
+    {
+        var token = GetAccessToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            StatusText = "Access token missing.";
+            return;
+        }
+
+        try
+        {
+            StatusText = "Loading service mapping...";
+            var api = _services.GetRequiredService<GenesysCloudApiClient>();
+            var mapping = await api.GetAuditQueryServiceMappingAsync(ApiBaseUri, token, CancellationToken.None);
+            ServiceMappingResponse = mapping;
+            StatusText = $"Service mapping loaded ({mapping?.Entities?.Count ?? 0} services).";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Failed to load service mapping: {ex.Message}";
+            _log.Log(LogLevel.Error, "Failed to load service mapping", new { Error = ex.Message });
+        }
+    }
+
+    [RelayCommand]
+    private async Task RunRealtimeRelatedQueryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RealtimeAuditId))
+        {
+            await _dialogs.AlertAsync("Missing Audit ID", "Please provide an Audit ID for the realtime related query.");
+            return;
+        }
+
+        var token = GetAccessToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            StatusText = "Access token missing.";
+            return;
+        }
+
+        IsBusy = true;
+        _cts = new CancellationTokenSource();
+        StatusText = "Running realtime related query...";
+
+        try
+        {
+            _log.Log(LogLevel.Info, "Starting realtime related query", new { RealtimeAuditId, RealtimeTrustorOrgId });
+
+            var trustorOrgId = string.IsNullOrWhiteSpace(RealtimeTrustorOrgId) ? null : RealtimeTrustorOrgId;
+            var state = await _auditLogs.RunRealtimeRelatedAsync(ApiBaseUri, token, RealtimeAuditId, trustorOrgId, _cts.Token);
+            
+            AuditLogState = state;
+
+            // Convert to display rows
+            var rows = state.RawEntities.Select(Models.AuditLogs.AuditLogRow.FromEntity).ToList();
+            
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                AuditLogRows.Clear();
+                AuditLogRows.AddRange(rows);
+                AuditSummaryText = $"Realtime related: {rows.Count} events";
+                LastAuditAt = DateTime.Now;
+            });
+
+            StatusText = $"Realtime related query complete. {rows.Count} events.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Realtime related query canceled.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Realtime related query failed: {ex.Message}";
+            _log.Log(LogLevel.Error, "Realtime related query failed", new { Error = ex.Message, Exception = ex.ToString() });
+            await _dialogs.AlertAsync("Query Failed", $"Failed to run realtime related query:\n{ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     [RelayCommand]
     private async Task ExportAuditReportAsync()
     {
+        // Handle Logs mode
+        if (SelectedWorkstream == AuditWorkstreamKind.Logs)
+        {
+            await ExportAuditLogsReportAsync();
+            return;
+        }
+
+        // Numbers mode - existing logic
         if (_store.Context is null)
         {
             StatusText = "Context not built.";
@@ -907,6 +1250,38 @@ public sealed partial class DashboardViewModel : ObservableObject
                 
                 await _dialogs.AlertAsync("Export Successful", $"Report exported successfully to:\n{outDir}");
             }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ExportAuditLogsReportAsync()
+    {
+        if (AuditLogState is null || AuditLogState.RawEntities.Count == 0)
+        {
+            StatusText = "No audit logs to export. Run a query first.";
+            await _dialogs.AlertAsync("No Data", "No audit logs to export. Please run a query first.");
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            StatusText = "Exporting audit logs report...";
+            var outDir = await _reportModule.ExportAuditLogsReportAsync(AuditLogState, CancellationToken.None);
+            _store.LastOutputFolder = outDir;
+            LastOutputFolder = outDir;
+            StatusText = "Audit logs report exported.";
+            
+            await _dialogs.AlertAsync("Export Successful", $"Audit logs report exported successfully to:\n{outDir}");
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Export failed: {ex.Message}";
+            _log.Log(LogLevel.Error, "Audit logs export failed", new { Error = ex.Message });
+            await _dialogs.AlertAsync("Export Failed", $"Failed to export audit logs:\n{ex.Message}");
         }
         finally
         {
