@@ -443,4 +443,24 @@ public sealed class ReportModule
 
         return issues;
     }
+
+    /// <summary>
+    /// Exports audit logs report to Excel format with multiple sheets
+    /// </summary>
+    public async Task<string> ExportAuditLogsReportAsync(
+        Models.AuditLogs.AuditLogState state,
+        CancellationToken ct = default)
+    {
+        var outDir = _paths.GetNewOutputFolder();
+        var fileName = $"GenesysAuditLogs_{DateTime.Now:yyyy-MM-dd_HHmm}.xlsx";
+        var outputPath = Path.Combine(outDir, fileName);
+
+        await Task.Run(() =>
+        {
+            ExcelReportExporter.ExportAuditLogs(outputPath, state);
+        }, ct);
+
+        _log.Log(Models.Logging.LogLevel.Info, "Audit logs report exported", new { OutDir = outDir, FileName = fileName });
+        return outDir;
+    }
 }

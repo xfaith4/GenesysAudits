@@ -359,6 +359,364 @@ public static class ExcelReportExporter
         worksheet.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.Gray);
         worksheet.Cells[row, 1].Style.WrapText = true;
     }
+
+    /// <summary>
+    /// Exports audit logs to Excel with multiple sheets
+    /// </summary>
+    public static void ExportAuditLogs(string outputPath, Models.AuditLogs.AuditLogState state)
+    {
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        
+        using var package = new ExcelPackage();
+
+        // Add Executive Summary sheet
+        AddAuditLogsExecutiveSummarySheet(package, state);
+
+        // Add Audit Results sheet
+        AddAuditResultsSheet(package, state);
+
+        // Add Query Info sheet
+        AddQueryInfoSheet(package, state);
+
+        // Add Transaction Status sheet
+        if (state.TransactionStatus != null)
+        {
+            AddTransactionStatusSheet(package, state);
+        }
+
+        // Add Service Mapping sheet
+        if (state.ServiceMapping != null)
+        {
+            AddServiceMappingSheet(package, state);
+        }
+
+        // Save the Excel file
+        var file = new FileInfo(outputPath);
+        package.SaveAs(file);
+    }
+
+    private static void AddAuditLogsExecutiveSummarySheet(ExcelPackage package, Models.AuditLogs.AuditLogState state)
+    {
+        var worksheet = package.Workbook.Worksheets.Add("ExecutiveSummary");
+        var summary = state.GetSummary();
+        
+        var row = 1;
+
+        // Title
+        worksheet.Cells[row, 1].Value = "Audit Logs Executive Summary";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 1].Style.Font.Size = 16;
+        worksheet.Cells[row, 1, row, 3].Merge = true;
+        row += 2;
+
+        // Overview
+        worksheet.Cells[row, 1].Value = "Overview";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 1].Style.Font.Size = 13;
+        worksheet.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        worksheet.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        worksheet.Cells[row, 1, row, 2].Merge = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Total Events:";
+        worksheet.Cells[row, 2].Value = summary.TotalEvents;
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Query Executed:";
+        worksheet.Cells[row, 2].Value = state.QueryExecutedAt.ToString("yyyy-MM-dd HH:mm:ss UTC");
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        row++;
+
+        if (state.QueryRequest != null)
+        {
+            worksheet.Cells[row, 1].Value = "Interval:";
+            worksheet.Cells[row, 2].Value = $"{state.QueryRequest.IntervalStart:yyyy-MM-dd HH:mm} - {state.QueryRequest.IntervalEnd:yyyy-MM-dd HH:mm}";
+            worksheet.Cells[row, 1].Style.Font.Bold = true;
+            row++;
+        }
+        row++;
+
+        // Top Actions
+        worksheet.Cells[row, 1].Value = "Top Actions";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 1].Style.Font.Size = 13;
+        worksheet.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        worksheet.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        worksheet.Cells[row, 1, row, 2].Merge = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Action";
+        worksheet.Cells[row, 2].Value = "Count";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 2].Style.Font.Bold = true;
+        row++;
+
+        foreach (var action in summary.TopActions.Take(10))
+        {
+            worksheet.Cells[row, 1].Value = action.Name;
+            worksheet.Cells[row, 2].Value = action.Count;
+            row++;
+        }
+        row++;
+
+        // Top Entity Types
+        worksheet.Cells[row, 1].Value = "Top Entity Types";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 1].Style.Font.Size = 13;
+        worksheet.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        worksheet.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        worksheet.Cells[row, 1, row, 2].Merge = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Entity Type";
+        worksheet.Cells[row, 2].Value = "Count";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 2].Style.Font.Bold = true;
+        row++;
+
+        foreach (var entityType in summary.TopEntityTypes.Take(10))
+        {
+            worksheet.Cells[row, 1].Value = entityType.Name;
+            worksheet.Cells[row, 2].Value = entityType.Count;
+            row++;
+        }
+        row++;
+
+        // Top Actors
+        worksheet.Cells[row, 1].Value = "Top Actors";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 1].Style.Font.Size = 13;
+        worksheet.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        worksheet.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        worksheet.Cells[row, 1, row, 2].Merge = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Actor";
+        worksheet.Cells[row, 2].Value = "Count";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 2].Style.Font.Bold = true;
+        row++;
+
+        foreach (var actor in summary.TopActors.Take(10))
+        {
+            worksheet.Cells[row, 1].Value = actor.Name;
+            worksheet.Cells[row, 2].Value = actor.Count;
+            row++;
+        }
+
+        worksheet.Column(1).Width = 40;
+        worksheet.Column(2).Width = 20;
+    }
+
+    private static void AddAuditResultsSheet(ExcelPackage package, Models.AuditLogs.AuditLogState state)
+    {
+        var worksheet = package.Workbook.Worksheets.Add("AuditResults");
+
+        // Headers
+        var headers = new[] { "Timestamp", "Action", "EntityType", "EntityId", "EntityName", "ServiceName", "User", "UserEmail", "ClientId", "ClientName", "PropertyChanges" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cells[1, i + 1].Value = headers[i];
+        }
+
+        // Format header
+        using (var headerRange = worksheet.Cells[1, 1, 1, headers.Length])
+        {
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        }
+
+        // Data rows
+        for (int i = 0; i < state.RawEntities.Count; i++)
+        {
+            var entity = state.RawEntities[i];
+            var rowNum = i + 2;
+
+            worksheet.Cells[rowNum, 1].Value = entity.Timestamp?.ToString("yyyy-MM-dd HH:mm:ss");
+            worksheet.Cells[rowNum, 2].Value = entity.Action;
+            worksheet.Cells[rowNum, 3].Value = entity.EntityType;
+            worksheet.Cells[rowNum, 4].Value = entity.EntityId;
+            worksheet.Cells[rowNum, 5].Value = entity.EntityName;
+            worksheet.Cells[rowNum, 6].Value = entity.ServiceName;
+            worksheet.Cells[rowNum, 7].Value = entity.User?.Display ?? entity.User?.Name;
+            worksheet.Cells[rowNum, 8].Value = entity.User?.Email;
+            worksheet.Cells[rowNum, 9].Value = entity.Client?.Id;
+            worksheet.Cells[rowNum, 10].Value = entity.Client?.Name;
+            worksheet.Cells[rowNum, 11].Value = entity.PropertyChanges?.Count ?? 0;
+        }
+
+        worksheet.Cells.AutoFitColumns();
+    }
+
+    private static void AddQueryInfoSheet(ExcelPackage package, Models.AuditLogs.AuditLogState state)
+    {
+        var worksheet = package.Workbook.Worksheets.Add("AuditQuery");
+        
+        if (state.QueryRequest == null)
+        {
+            worksheet.Cells[1, 1].Value = "No query information available";
+            return;
+        }
+
+        var row = 1;
+        worksheet.Cells[row, 1].Value = "Query Parameter";
+        worksheet.Cells[row, 2].Value = "Value";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 2].Style.Font.Bold = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Interval Start";
+        worksheet.Cells[row, 2].Value = state.QueryRequest.IntervalStart.ToString("yyyy-MM-dd HH:mm:ss UTC");
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Interval End";
+        worksheet.Cells[row, 2].Value = state.QueryRequest.IntervalEnd.ToString("yyyy-MM-dd HH:mm:ss UTC");
+        row++;
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.ServiceName))
+        {
+            worksheet.Cells[row, 1].Value = "Service Name";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.ServiceName;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.UserId))
+        {
+            worksheet.Cells[row, 1].Value = "User ID";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.UserId;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.ClientId))
+        {
+            worksheet.Cells[row, 1].Value = "Client ID";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.ClientId;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.Action))
+        {
+            worksheet.Cells[row, 1].Value = "Action";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.Action;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.EntityType))
+        {
+            worksheet.Cells[row, 1].Value = "Entity Type";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.EntityType;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.QueryRequest.EntityId))
+        {
+            worksheet.Cells[row, 1].Value = "Entity ID";
+            worksheet.Cells[row, 2].Value = state.QueryRequest.EntityId;
+            row++;
+        }
+
+        worksheet.Cells[row, 1].Value = "Expand User";
+        worksheet.Cells[row, 2].Value = state.QueryRequest.ExpandUser ? "Yes" : "No";
+        row++;
+
+        worksheet.Column(1).Width = 30;
+        worksheet.Column(2).Width = 50;
+    }
+
+    private static void AddTransactionStatusSheet(ExcelPackage package, Models.AuditLogs.AuditLogState state)
+    {
+        var worksheet = package.Workbook.Worksheets.Add("AuditTransaction");
+        
+        if (state.TransactionStatus == null)
+        {
+            worksheet.Cells[1, 1].Value = "No transaction information available";
+            return;
+        }
+
+        var row = 1;
+        worksheet.Cells[row, 1].Value = "Transaction Field";
+        worksheet.Cells[row, 2].Value = "Value";
+        worksheet.Cells[row, 1].Style.Font.Bold = true;
+        worksheet.Cells[row, 2].Style.Font.Bold = true;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "Transaction ID";
+        worksheet.Cells[row, 2].Value = state.TransactionStatus.Id;
+        row++;
+
+        worksheet.Cells[row, 1].Value = "State";
+        worksheet.Cells[row, 2].Value = state.TransactionStatus.State;
+        row++;
+
+        if (state.TransactionStatus.DateStart.HasValue)
+        {
+            worksheet.Cells[row, 1].Value = "Date Start";
+            worksheet.Cells[row, 2].Value = state.TransactionStatus.DateStart.Value.ToString("yyyy-MM-dd HH:mm:ss UTC");
+            row++;
+        }
+
+        if (state.TransactionStatus.DateEnd.HasValue)
+        {
+            worksheet.Cells[row, 1].Value = "Date End";
+            worksheet.Cells[row, 2].Value = state.TransactionStatus.DateEnd.Value.ToString("yyyy-MM-dd HH:mm:ss UTC");
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.TransactionStatus.Interval))
+        {
+            worksheet.Cells[row, 1].Value = "Interval";
+            worksheet.Cells[row, 2].Value = state.TransactionStatus.Interval;
+            row++;
+        }
+
+        if (!string.IsNullOrEmpty(state.TransactionStatus.ServiceName))
+        {
+            worksheet.Cells[row, 1].Value = "Service Name";
+            worksheet.Cells[row, 2].Value = state.TransactionStatus.ServiceName;
+            row++;
+        }
+
+        worksheet.Column(1).Width = 30;
+        worksheet.Column(2).Width = 50;
+    }
+
+    private static void AddServiceMappingSheet(ExcelPackage package, Models.AuditLogs.AuditLogState state)
+    {
+        var worksheet = package.Workbook.Worksheets.Add("AuditSvcMapping");
+        
+        if (state.ServiceMapping == null || state.ServiceMapping.Entities.Count == 0)
+        {
+            worksheet.Cells[1, 1].Value = "No service mapping available";
+            return;
+        }
+
+        // Headers
+        worksheet.Cells[1, 1].Value = "Name";
+        worksheet.Cells[1, 2].Value = "Service Name";
+        worksheet.Cells[1, 3].Value = "Display Name";
+        
+        using (var headerRange = worksheet.Cells[1, 1, 1, 3])
+        {
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        }
+
+        // Data rows
+        for (int i = 0; i < state.ServiceMapping.Entities.Count; i++)
+        {
+            var entity = state.ServiceMapping.Entities[i];
+            var rowNum = i + 2;
+
+            worksheet.Cells[rowNum, 1].Value = entity.Name;
+            worksheet.Cells[rowNum, 2].Value = entity.ServiceName;
+            worksheet.Cells[rowNum, 3].Value = entity.DisplayName;
+        }
+
+        worksheet.Cells.AutoFitColumns();
+    }
 }
 
 // ### END: ExcelReportExporter
