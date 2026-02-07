@@ -120,7 +120,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     }
 
     public string AuditTitle
-        => RunBothAudits ? "Genesys Cloud Combined Audit (Extensions + DIDs)" 
+        => RunBothAudits ? "Genesys Audits - Combined (Extensions + DIDs)" 
             : (AuditKind == AuditNumberKind.Did ? "Genesys Audits - DID" : "Genesys Audits - Extension");
 
     private string _apiBaseUri = "";
