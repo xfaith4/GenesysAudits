@@ -108,7 +108,7 @@ Top Priority Recommendations:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Genesys Cloud Extension Audit              │
+│ Genesys Audits                              │
 │ Executive Summary                           │
 │                                             │
 │ Report Date: 2026-02-07 16:45:30           │
@@ -288,7 +288,7 @@ If `issues.Count == 0`:
 ### Sample Executive Summary
 
 ```
-Genesys Cloud Extension Audit - Executive Summary
+Genesys Audits - Executive Summary
 Report Date: 2026-02-07 16:45:30
 
 Configuration Health Score: 78/100 - Good

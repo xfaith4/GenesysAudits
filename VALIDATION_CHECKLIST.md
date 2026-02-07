@@ -10,7 +10,7 @@
 ### Single Audit Mode (Existing Functionality)
 - [ ] Extension audit works as before
   - [ ] "Ext" radio button selects Extension mode
-  - [ ] Title shows "Genesys Cloud Extension Audit"
+  - [ ] Title shows "Genesys Audits"
   - [ ] Build Context fetches users and extensions
   - [ ] Export creates file named "GenesysExtensionAudit_*.xlsx"
   - [ ] Excel has "Users" and "Extensions" sheets

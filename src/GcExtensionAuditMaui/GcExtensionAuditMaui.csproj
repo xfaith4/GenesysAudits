@@ -19,7 +19,7 @@
 		<Nullable>enable</Nullable>
 
 		<!-- Display name -->
-		<ApplicationTitle>GcExtensionAuditMaui</ApplicationTitle>
+		<ApplicationTitle>Genesys Audits</ApplicationTitle>
 
 		<!-- App Identifier -->
 		<ApplicationId>com.companyname.gcextensionauditmaui</ApplicationId>

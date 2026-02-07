@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation adds a comprehensive patch functionality to the Genesys Cloud Extension Audit application that fully addresses the requirements in the problem statement.
+This implementation adds a comprehensive patch functionality to the Genesys Audits application that fully addresses the requirements in the problem statement.
 
 ## Problem Statement Requirements - All Met ✅
 

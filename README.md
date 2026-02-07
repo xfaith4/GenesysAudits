@@ -1,4 +1,4 @@
-# Genesys Cloud Extension Audit & Repair
+# Genesys Audits
 
 Audit Genesys Cloud user profile **WORK PHONE** **extensions** or **DIDs** against the Telephony inventory, generate reviewable reports, and (optionally) repair **missing assignments** by re-asserting the number on the user profile with the required `version` bump.
 

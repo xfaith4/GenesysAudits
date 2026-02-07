@@ -31,7 +31,7 @@ public partial class App : Application
             var main = _services.GetRequiredService<DashboardPage>();
             return new Window(main)
             {
-                Title = "Genesys Cloud Extension Audit",
+                Title = "Genesys Audits",
                 Width = DefaultWindowWidth,
                 Height = DefaultWindowHeight,
             };
@@ -63,7 +63,7 @@ public partial class App : Application
 
             return new Window(fallback)
             {
-                Title = "Genesys Cloud Extension Audit (Startup Error)",
+                Title = "Genesys Audits (Startup Error)",
                 Width = ErrorWindowWidth,
                 Height = ErrorWindowHeight,
             };
