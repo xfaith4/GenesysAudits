@@ -57,12 +57,13 @@
             <!-- Command bar - Logs Mode -->
             <Grid Grid.Row="2" Grid.ColumnSpan="2" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{StaticResource Space.3}" RowSpacing="{StaticResource Space.2}" IsVisible="{Binding IsLogsMode}">
                 <!-- Query controls row 1 -->
+                <!-- Note: DatePicker only supports date selection. Time defaults to start/end of day in ViewModel -->
                 <HorizontalStackLayout Grid.Row="0" Spacing="{StaticResource Space.2}">
                     <Label Text="Interval Start:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" />
-                    <DatePicker Date="{Binding LogQueryIntervalStart}" Format="yyyy-MM-dd HH:mm" />
+                    <DatePicker Date="{Binding LogQueryIntervalStart}" Format="yyyy-MM-dd" />
                     
                     <Label Text="Interval End:" Style="{StaticResource CaptionLabelStyle}" VerticalOptions="Center" Margin="10,0,0,0" />
-                    <DatePicker Date="{Binding LogQueryIntervalEnd}" Format="yyyy-MM-dd HH:mm" />
+                    <DatePicker Date="{Binding LogQueryIntervalEnd}" Format="yyyy-MM-dd" />
                     
                     <Button Text="Load Services" Command="{Binding LoadServiceMappingCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="8,6" Margin="10,0,0,0" />
                 </HorizontalStackLayout>

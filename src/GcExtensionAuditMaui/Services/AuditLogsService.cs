@@ -11,6 +11,7 @@ public sealed class AuditLogsService
     private readonly GenesysCloudApiClient _api;
     private readonly LoggingService _log;
 
+    // Genesys Cloud Audit API enforces a maximum page size of 500
     private const int PageSize = 500;
     private const int TransactionPollMaxSeconds = 120;
     private const int TransactionPollIntervalMs = 2000;
