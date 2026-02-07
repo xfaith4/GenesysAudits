@@ -40,6 +40,7 @@ public static class MauiProgram
         });
 
         builder.Services.AddSingleton<AuditService>();
+        builder.Services.AddSingleton<AuditLogsService>();
 
         builder.Services.AddSingleton<DashboardViewModel>();
         builder.Services.AddSingleton<DashboardPage>();

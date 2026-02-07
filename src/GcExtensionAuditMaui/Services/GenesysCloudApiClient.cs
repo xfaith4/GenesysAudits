@@ -267,4 +267,35 @@ public sealed class GenesysCloudApiClient
 
     private static string? Truncate(string? s, int max)
         => string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "...";
+
+    // Audit Logs API methods
+
+    public Task<Models.AuditLogs.ServiceMappingResponse?> GetAuditQueryServiceMappingAsync(string apiBaseUri, string accessToken, CancellationToken ct)
+        => SendAsync<Models.AuditLogs.ServiceMappingResponse>(HttpMethod.Get, apiBaseUri, accessToken, "/api/v2/audits/query/servicemapping", body: null, ct);
+
+    public Task<Models.AuditLogs.AuditQueryTransactionResponse?> PostAuditQueryAsync(string apiBaseUri, string accessToken, Models.AuditLogs.AuditQueryApiRequest request, CancellationToken ct)
+        => SendAsync<Models.AuditLogs.AuditQueryTransactionResponse>(HttpMethod.Post, apiBaseUri, accessToken, "/api/v2/audits/query", request, ct);
+
+    public Task<Models.AuditLogs.AuditTransactionStatusResponse?> GetAuditQueryTransactionAsync(string apiBaseUri, string accessToken, string transactionId, CancellationToken ct)
+        => SendAsync<Models.AuditLogs.AuditTransactionStatusResponse>(HttpMethod.Get, apiBaseUri, accessToken, $"/api/v2/audits/query/{Uri.EscapeDataString(transactionId)}", body: null, ct);
+
+    public Task<Models.AuditLogs.AuditQueryResultsResponse?> GetAuditQueryResultsAsync(string apiBaseUri, string accessToken, string transactionId, int pageSize, string? cursor, string? expand, CancellationToken ct)
+    {
+        var query = $"pageSize={pageSize}";
+        if (!string.IsNullOrEmpty(cursor))
+        {
+            query += $"&cursor={Uri.EscapeDataString(cursor)}";
+        }
+        if (!string.IsNullOrEmpty(expand))
+        {
+            query += $"&expand={Uri.EscapeDataString(expand)}";
+        }
+        return SendAsync<Models.AuditLogs.AuditQueryResultsResponse>(HttpMethod.Get, apiBaseUri, accessToken, $"/api/v2/audits/query/{Uri.EscapeDataString(transactionId)}/results?{query}", body: null, ct);
+    }
+
+    public Task<Models.AuditLogs.ServiceMappingResponse?> GetAuditQueryRealtimeServiceMappingAsync(string apiBaseUri, string accessToken, CancellationToken ct)
+        => SendAsync<Models.AuditLogs.ServiceMappingResponse>(HttpMethod.Get, apiBaseUri, accessToken, "/api/v2/audits/query/realtime/servicemapping", body: null, ct);
+
+    public Task<Models.AuditLogs.AuditQueryResultsResponse?> PostAuditQueryRealtimeRelatedAsync(string apiBaseUri, string accessToken, Models.AuditLogs.RealtimeRelatedQueryRequest request, CancellationToken ct)
+        => SendAsync<Models.AuditLogs.AuditQueryResultsResponse>(HttpMethod.Post, apiBaseUri, accessToken, "/api/v2/audits/query/realtime/related", request, ct);
 }
