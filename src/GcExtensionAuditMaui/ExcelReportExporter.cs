@@ -6,6 +6,12 @@ namespace GcExtensionAuditMaui;
 
 public static class ExcelReportExporter
 {
+    // Health score calculation weights - can be adjusted to change sensitivity
+    private const int CriticalIssueWeight = 10;
+    private const int HighIssueWeight = 5;
+    private const int MediumIssueWeight = 2;
+    private const int LowIssueWeight = 1;
+
     public static void Export(string outputPath, IReadOnlyList<ApiSnapshot> snapshots, IReadOnlyList<IssueRow> issues)
     {
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -140,9 +146,9 @@ public static class ExcelReportExporter
         worksheet.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.DarkBlue);
         row += 2;
 
-        // Report Date
-        worksheet.Cells[row, 1].Value = "Report Date:";
-        worksheet.Cells[row, 2].Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        // Report Date - Using UtcNow for consistency across timezones in audit reports
+        worksheet.Cells[row, 1].Value = "Report Date (UTC):";
+        worksheet.Cells[row, 2].Value = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         worksheet.Cells[row, 1].Style.Font.Bold = true;
         row += 2;
 
@@ -154,7 +160,11 @@ public static class ExcelReportExporter
         var lowIssues = issues.Count(i => i.Severity?.Equals("Low", StringComparison.OrdinalIgnoreCase) == true);
 
         // Calculate health score (100 - weighted penalty for issues)
-        var healthScore = 100 - Math.Min(100, (criticalIssues * 10) + (highIssues * 5) + (mediumIssues * 2) + (lowIssues * 1));
+        var healthScore = 100 - Math.Min(100, 
+            (criticalIssues * CriticalIssueWeight) + 
+            (highIssues * HighIssueWeight) + 
+            (mediumIssues * MediumIssueWeight) + 
+            (lowIssues * LowIssueWeight));
         var healthStatus = healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Good" : healthScore >= 50 ? "Fair" : "Poor";
         var healthColor = healthScore >= 90 ? System.Drawing.Color.Green : 
                          healthScore >= 75 ? System.Drawing.Color.YellowGreen : 

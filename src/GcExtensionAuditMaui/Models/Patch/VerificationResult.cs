@@ -19,7 +19,8 @@ public sealed class VerificationItem
 {
     public required string UserId { get; init; }
     public required string? UserDisplay { get; init; }
-    public required string ExpectedExtension { get; init; }
+    // Both ExpectedExtension and ActualExtension are nullable to properly handle cleared extensions
+    public required string? ExpectedExtension { get; init; }
     public required string? ActualExtension { get; init; }
     public required VerificationStatus Status { get; init; }
     public string? ErrorMessage { get; init; }

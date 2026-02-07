@@ -334,7 +334,7 @@ public sealed partial class PatchPlanViewModel : ObservableObject
             // Second confirmation with impact details
             var itemsToProcess = PlanItems.Count;
             var sampleChanges = PlanItems.Take(3).Select(i => 
-                $"  • {i.User}: {i.CurrentExtension ?? "(none)"} → {i.RecommendedExtension ?? "(cleared)"}").ToList();
+                $"  • {i.User}: {i.CurrentExtension ?? "(cleared)"} → {i.RecommendedExtension ?? "(cleared)"}").ToList();
             var sampleText = string.Join("\n", sampleChanges);
             if (itemsToProcess > 3)
             {

@@ -40,7 +40,7 @@
 
                 <Label Text="{Binding PlanSummaryText}" FontSize="12" TextColor="#6B7280" LineBreakMode="WordWrap" />
 
-                <Label Text="Plan Items - Change Preview (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <Label Text="Plan Items — Change Preview (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
                 <Label Text="💡 Review what will change: Current Extension → Target Extension" FontSize="11" TextColor="#6B7280" />
                 <ScrollView Orientation="Horizontal">
                     <Grid RowDefinitions="Auto,*" ColumnSpacing="0">

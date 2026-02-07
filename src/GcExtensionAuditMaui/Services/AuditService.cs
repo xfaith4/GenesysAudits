@@ -1160,6 +1160,8 @@ public sealed class AuditService
                 }
                 else
                 {
+                    // Extensions are typically numeric but may contain alphanumeric characters (e.g., "1234", "EXT-1234")
+                    // Use OrdinalIgnoreCase to handle potential case variations in edge cases
                     matches = string.Equals(patched.Extension, actualExtension, StringComparison.OrdinalIgnoreCase);
                 }
 
