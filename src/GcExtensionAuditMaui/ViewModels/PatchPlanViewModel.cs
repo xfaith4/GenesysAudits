@@ -303,9 +303,25 @@ public sealed partial class PatchPlanViewModel : ObservableObject
         // Double verification when not in WhatIf mode
         if (!WhatIf)
         {
+            // Build detailed summary for confirmation
+            var categoryBreakdown = PlanItems
+                .GroupBy(i => i.Category)
+                .Select(g => $"  • {g.Key}: {g.Count()} item(s)")
+                .ToList();
+            
+            var breakdownText = string.Join("\n", categoryBreakdown);
+            
             var firstConfirm = await _dialogs.ConfirmAsync(
-                "⚠️ First Confirmation",
-                $"You are about to apply REAL changes to user extensions.\n\n{PlanSummaryText}\n\nAre you absolutely sure?",
+                "⚠️ First Confirmation - Review Changes",
+                $"You are about to apply REAL changes to user extensions.\n\n" +
+                $"Changes by Category:\n{breakdownText}\n\n" +
+                $"Total: {PlanItems.Count} user(s) will be modified\n\n" +
+                $"These changes will:\n" +
+                $"  • Update user profile extension assignments\n" +
+                $"  • Increment user version numbers\n" +
+                $"  • Be logged to disk for audit trail\n\n" +
+                $"{(EnablePostPatchVerification ? "✓ Post-patch verification is ENABLED\n\n" : "⚠️ Post-patch verification is DISABLED\n\n")}" +
+                $"Are you absolutely sure you want to proceed?",
                 accept: "YES, CONTINUE",
                 cancel: "Cancel");
             
@@ -315,11 +331,23 @@ public sealed partial class PatchPlanViewModel : ObservableObject
                 return;
             }
 
-            // Second confirmation
-            var itemsToProcess = PlanItems.Count; // This is the filtered count based on category selection
+            // Second confirmation with impact details
+            var itemsToProcess = PlanItems.Count;
+            var sampleChanges = PlanItems.Take(3).Select(i => 
+                $"  • {i.User}: {i.CurrentExtension ?? "(none)"} → {i.RecommendedExtension ?? "(cleared)"}").ToList();
+            var sampleText = string.Join("\n", sampleChanges);
+            if (itemsToProcess > 3)
+            {
+                sampleText += $"\n  ... and {itemsToProcess - 3} more";
+            }
+            
             var secondConfirm = await _dialogs.ConfirmAsync(
-                "⚠️⚠️ FINAL Confirmation",
-                $"This is your LAST CHANCE to cancel.\n\nThis will modify {itemsToProcess} user extension assignment{(itemsToProcess != 1 ? "s" : "")}.\n\nThis action CANNOT be undone automatically.\n\nProceed with REAL changes?",
+                "⚠️⚠️ FINAL Confirmation - Last Chance",
+                $"This is your LAST CHANCE to cancel.\n\n" +
+                $"Sample of changes that will be applied:\n{sampleText}\n\n" +
+                $"Total: {itemsToProcess} user extension assignment{(itemsToProcess != 1 ? "s" : "")} will be modified.\n\n" +
+                $"⚠️ This action CANNOT be undone automatically.\n\n" +
+                $"Proceed with REAL changes?",
                 accept: "PATCH NOW",
                 cancel: "Cancel");
             

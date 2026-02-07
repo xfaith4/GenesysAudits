@@ -40,30 +40,58 @@
 
                 <Label Text="{Binding PlanSummaryText}" FontSize="12" TextColor="#6B7280" LineBreakMode="WordWrap" />
 
-                <Label Text="Plan Items (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <Label Text="Plan Items - Change Preview (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <Label Text="💡 Review what will change: Current Extension → Target Extension" FontSize="11" TextColor="#6B7280" />
                 <ScrollView Orientation="Horizontal">
                     <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
-                        <Grid Grid.Row="0" ColumnDefinitions="140,200,260,120,120,140,*" Padding="6" BackgroundColor="#F3F4F6">
+                        <Grid Grid.Row="0" ColumnDefinitions="140,200,260,120,30,120,140,*" Padding="6" BackgroundColor="#F3F4F6">
                             <Label Grid.Column="0" Text="Category" FontAttributes="Bold" />
                             <Label Grid.Column="1" Text="Action" FontAttributes="Bold" />
                             <Label Grid.Column="2" Text="User" FontAttributes="Bold" />
                             <Label Grid.Column="3" Text="Current Ext" FontAttributes="Bold" />
-                            <Label Grid.Column="4" Text="Target Ext" FontAttributes="Bold" />
-                            <Label Grid.Column="5" Text="User ID" FontAttributes="Bold" />
-                            <Label Grid.Column="6" Text="Notes" FontAttributes="Bold" />
+                            <Label Grid.Column="4" Text="→" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label Grid.Column="5" Text="Target Ext" FontAttributes="Bold" />
+                            <Label Grid.Column="6" Text="User ID" FontAttributes="Bold" />
+                            <Label Grid.Column="7" Text="Notes" FontAttributes="Bold" />
                         </Grid>
 
                         <CollectionView Grid.Row="1" ItemsSource="{Binding PlanItems}" HeightRequest="200">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate x:DataType="planning:FixupItem">
-                                    <Grid ColumnDefinitions="140,200,260,120,120,140,400" Padding="6">
-                                        <Label Grid.Column="0" Text="{Binding Category}" />
-                                        <Label Grid.Column="1" Text="{Binding Action}" />
+                                    <Grid ColumnDefinitions="140,200,260,120,30,120,140,400" Padding="6">
+                                        <!-- Category with color coding -->
+                                        <Frame Grid.Column="0" Padding="4,2" CornerRadius="4" HasShadow="False" BorderColor="Transparent">
+                                            <Frame.Triggers>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Missing">
+                                                    <Setter Property="BackgroundColor" Value="#FEE2E2" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="DuplicateUser">
+                                                    <Setter Property="BackgroundColor" Value="#FEF3C7" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Discrepancy">
+                                                    <Setter Property="BackgroundColor" Value="#DBEAFE" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Reassert">
+                                                    <Setter Property="BackgroundColor" Value="#E5E7EB" />
+                                                </DataTrigger>
+                                            </Frame.Triggers>
+                                            <Label Text="{Binding Category}" FontSize="11" />
+                                        </Frame>
+                                        
+                                        <Label Grid.Column="1" Text="{Binding Action}" FontSize="12" />
                                         <Label Grid.Column="2" Text="{Binding User}" />
-                                        <Label Grid.Column="3" Text="{Binding CurrentExtension}" />
-                                        <Label Grid.Column="4" Text="{Binding RecommendedExtension}" />
-                                        <Label Grid.Column="5" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
-                                        <Label Grid.Column="6" Text="{Binding Notes}" LineBreakMode="TailTruncation" />
+                                        
+                                        <!-- Current Extension (before) -->
+                                        <Label Grid.Column="3" Text="{Binding CurrentExtension}" TextColor="#DC2626" FontFamily="Courier New" />
+                                        
+                                        <!-- Arrow -->
+                                        <Label Grid.Column="4" Text="→" HorizontalTextAlignment="Center" FontSize="14" FontAttributes="Bold" TextColor="#6B7280" />
+                                        
+                                        <!-- Target Extension (after) -->
+                                        <Label Grid.Column="5" Text="{Binding RecommendedExtension}" TextColor="#16A34A" FontAttributes="Bold" FontFamily="Courier New" />
+                                        
+                                        <Label Grid.Column="6" Text="{Binding UserId}" FontSize="11" TextColor="#6B7280" />
+                                        <Label Grid.Column="7" Text="{Binding Notes}" LineBreakMode="TailTruncation" FontSize="11" />
                                     </Grid>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
