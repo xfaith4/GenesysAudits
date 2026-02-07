@@ -140,7 +140,7 @@ public static class ExcelReportExporter
         int row = 1;
 
         // Title
-        worksheet.Cells[row, 1].Value = "Genesys Cloud Extension Audit - Executive Summary";
+        worksheet.Cells[row, 1].Value = "Genesys Audits - Executive Summary";
         worksheet.Cells[row, 1].Style.Font.Size = 16;
         worksheet.Cells[row, 1].Style.Font.Bold = true;
         worksheet.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.DarkBlue);

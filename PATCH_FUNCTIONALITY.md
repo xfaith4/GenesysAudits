@@ -1,6 +1,6 @@
 # Comprehensive Patch Functionality
 
-This document describes the comprehensive patch functionality in the Genesys Cloud Extension Audit application.
+This document describes the comprehensive patch functionality in the Genesys Audits application.
 
 ## Overview
 

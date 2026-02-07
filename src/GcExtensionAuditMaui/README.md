@@ -1,6 +1,6 @@
 # GcExtensionAuditMaui (.NET MAUI / Windows)
 
-Windows rewrite of the PowerShell/WPF **Genesys Cloud Extension Audit & Repair** tool as a **.NET 8+ / .NET 9** .NET MAUI application using **MVVM**, `async/await`, and `HttpClient`. Supports auditing **Extensions** and **DIDs** (toggle in the UI).
+Windows rewrite of the PowerShell/WPF **Genesys Audits** tool as a **.NET 8+ / .NET 9** .NET MAUI application using **MVVM**, `async/await`, and `HttpClient`. Supports auditing **Extensions** and **DIDs** (toggle in the UI).
 
 ## Run (Windows)
 

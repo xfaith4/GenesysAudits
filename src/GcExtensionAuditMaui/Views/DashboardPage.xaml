@@ -6,7 +6,7 @@
     xmlns:components="clr-namespace:GcExtensionAuditMaui.Views.Components"
     xmlns:vm="clr-namespace:GcExtensionAuditMaui.ViewModels"
     x:DataType="vm:DashboardViewModel"
-    Title="Genesys Cloud Extension Audit">
+    Title="Genesys Audits">
 
     <Grid
         Padding="{StaticResource Pad.Page}"

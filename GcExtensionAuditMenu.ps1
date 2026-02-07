@@ -46,7 +46,7 @@ function New-ContextInteractive {
 
 function Show-Menu {
   Write-Host ""
-  Write-Host "Genesys Cloud Extension Audit Menu"
+  Write-Host "Genesys Audits Menu"
   Write-Host "  1) Provide Dry Run Report"
   Write-Host "  2) Find Duplicate Extension assignments (same extension on multiple users)"
   Write-Host "  3) Find Discrepancies (profile extension exists, but extension list assigned to someone else / non-user)"

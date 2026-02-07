@@ -1,7 +1,7 @@
 # Implementation Summary: Enhanced Summary Page
 
 ## Overview
-Successfully implemented a professional, data-driven summary page for the Genesys Cloud Extension Audit application that transforms raw audit data into actionable insights through pivot tables and bar chart visualizations.
+Successfully implemented a professional, data-driven summary page for the Genesys Audits application that transforms raw audit data into actionable insights through pivot tables and bar chart visualizations.
 
 ## What Was Built
 
