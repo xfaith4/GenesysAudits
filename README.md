@@ -112,9 +112,18 @@ Alternative (default publish folder):
     - ☑️ Duplicate Users - Multiple users assigned to the same extension
     - ☑️ Discrepancies - Extension record exists but wrong owner/type mismatch
     - ☐ Reassert Consistent - Optional: Reassert users that look consistent (for sync verification)
+  - **Enhanced Visual Preview**: Color-coded plan items showing Before → After changes
+    - Category badges (red for Missing, yellow for Duplicates, blue for Discrepancies)
+    - Current extension in RED, target extension in GREEN
+    - Arrow visualization for clarity
+  - **Post-Patch Verification** (optional, enabled by default):
+    - Automatically re-fetches users after patching
+    - Compares actual state vs expected state
+    - Shows Confirmed/Mismatch status for each user
+    - Provides audit trail and confidence in changes
   - **Double Verification**: When running real changes (WhatIf=false):
-    - First confirmation dialog: Warns about applying REAL changes
-    - Second confirmation dialog: FINAL warning before execution
+    - First confirmation dialog: Category breakdown and impact summary
+    - Second confirmation dialog: Sample changes and FINAL warning
     - Must type `PATCH` in the confirmation field
   - **Selective Fixing**: Can fix one issue type at a time or any combination
   - **Action Types Supported**:
@@ -151,8 +160,17 @@ Each export creates a timestamped output folder:
 
 Exports include:
 
+- **Executive Summary** (Excel exports only):
+  - Configuration health score (0-100 scale)
+  - Issue breakdown by severity and category
+  - Entity inventory (users, extensions, DIDs)
+  - Impact analysis and top recommendations
+  - Professional formatting for stakeholder presentations
 - Dry-run audit report CSVs
 - `Snapshot.json` with context summary + API stats (calls by method/path, last error, last rate limit snapshot)
+
+For more details on the Executive Summary feature, see `EXECUTIVE_SUMMARY_FEATURE.md`.
+For post-patch verification details, see `POST_PATCH_VERIFICATION.md`.
 
 ### API endpoints used
 

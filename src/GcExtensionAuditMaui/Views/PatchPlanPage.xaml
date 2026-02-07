@@ -40,30 +40,58 @@
 
                 <Label Text="{Binding PlanSummaryText}" FontSize="12" TextColor="#6B7280" LineBreakMode="WordWrap" />
 
-                <Label Text="Plan Items (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <Label Text="Plan Items — Change Preview (filtered by selected categories):" FontAttributes="Bold" FontSize="12" />
+                <Label Text="💡 Review what will change: Current Extension → Target Extension" FontSize="11" TextColor="#6B7280" />
                 <ScrollView Orientation="Horizontal">
                     <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
-                        <Grid Grid.Row="0" ColumnDefinitions="140,200,260,120,120,140,*" Padding="6" BackgroundColor="#F3F4F6">
+                        <Grid Grid.Row="0" ColumnDefinitions="140,200,260,120,30,120,140,*" Padding="6" BackgroundColor="#F3F4F6">
                             <Label Grid.Column="0" Text="Category" FontAttributes="Bold" />
                             <Label Grid.Column="1" Text="Action" FontAttributes="Bold" />
                             <Label Grid.Column="2" Text="User" FontAttributes="Bold" />
                             <Label Grid.Column="3" Text="Current Ext" FontAttributes="Bold" />
-                            <Label Grid.Column="4" Text="Target Ext" FontAttributes="Bold" />
-                            <Label Grid.Column="5" Text="User ID" FontAttributes="Bold" />
-                            <Label Grid.Column="6" Text="Notes" FontAttributes="Bold" />
+                            <Label Grid.Column="4" Text="→" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                            <Label Grid.Column="5" Text="Target Ext" FontAttributes="Bold" />
+                            <Label Grid.Column="6" Text="User ID" FontAttributes="Bold" />
+                            <Label Grid.Column="7" Text="Notes" FontAttributes="Bold" />
                         </Grid>
 
                         <CollectionView Grid.Row="1" ItemsSource="{Binding PlanItems}" HeightRequest="200">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate x:DataType="planning:FixupItem">
-                                    <Grid ColumnDefinitions="140,200,260,120,120,140,400" Padding="6">
-                                        <Label Grid.Column="0" Text="{Binding Category}" />
-                                        <Label Grid.Column="1" Text="{Binding Action}" />
+                                    <Grid ColumnDefinitions="140,200,260,120,30,120,140,400" Padding="6">
+                                        <!-- Category with color coding -->
+                                        <Frame Grid.Column="0" Padding="4,2" CornerRadius="4" HasShadow="False" BorderColor="Transparent">
+                                            <Frame.Triggers>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Missing">
+                                                    <Setter Property="BackgroundColor" Value="#FEE2E2" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="DuplicateUser">
+                                                    <Setter Property="BackgroundColor" Value="#FEF3C7" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Discrepancy">
+                                                    <Setter Property="BackgroundColor" Value="#DBEAFE" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Frame" Binding="{Binding Category}" Value="Reassert">
+                                                    <Setter Property="BackgroundColor" Value="#E5E7EB" />
+                                                </DataTrigger>
+                                            </Frame.Triggers>
+                                            <Label Text="{Binding Category}" FontSize="11" />
+                                        </Frame>
+                                        
+                                        <Label Grid.Column="1" Text="{Binding Action}" FontSize="12" />
                                         <Label Grid.Column="2" Text="{Binding User}" />
-                                        <Label Grid.Column="3" Text="{Binding CurrentExtension}" />
-                                        <Label Grid.Column="4" Text="{Binding RecommendedExtension}" />
-                                        <Label Grid.Column="5" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
-                                        <Label Grid.Column="6" Text="{Binding Notes}" LineBreakMode="TailTruncation" />
+                                        
+                                        <!-- Current Extension (before) -->
+                                        <Label Grid.Column="3" Text="{Binding CurrentExtension}" TextColor="#DC2626" FontFamily="Courier New" />
+                                        
+                                        <!-- Arrow -->
+                                        <Label Grid.Column="4" Text="→" HorizontalTextAlignment="Center" FontSize="14" FontAttributes="Bold" TextColor="#6B7280" />
+                                        
+                                        <!-- Target Extension (after) -->
+                                        <Label Grid.Column="5" Text="{Binding RecommendedExtension}" TextColor="#16A34A" FontAttributes="Bold" FontFamily="Courier New" />
+                                        
+                                        <Label Grid.Column="6" Text="{Binding UserId}" FontSize="11" TextColor="#6B7280" />
+                                        <Label Grid.Column="7" Text="{Binding Notes}" LineBreakMode="TailTruncation" FontSize="11" />
                                     </Grid>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
@@ -96,7 +124,16 @@
 
                     <Label Grid.Row="1" Grid.Column="0" Text="Confirm" VerticalTextAlignment="Center" />
                     <Entry Grid.Row="1" Grid.Column="1" Text="{Binding ConfirmText}" WidthRequest="140" />
-                    <Label Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="7" Text="⚠️ For REAL changes: uncheck WhatIf, type PATCH, and confirm TWICE." FontSize="12" TextColor="#DC2626" FontAttributes="Bold" VerticalTextAlignment="Center" />
+                    
+                    <HorizontalStackLayout Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" Spacing="8">
+                        <CheckBox IsChecked="{Binding EnablePostPatchVerification}" />
+                        <Label Text="Enable post-patch verification (compares actual state vs expected)" 
+                               VerticalTextAlignment="Center" 
+                               FontSize="12" 
+                               TextColor="#374151" />
+                    </HorizontalStackLayout>
+                    
+                    <Label Grid.Row="1" Grid.Column="5" Grid.ColumnSpan="5" Text="⚠️ For REAL changes: uncheck WhatIf, type PATCH, and confirm TWICE." FontSize="12" TextColor="#DC2626" FontAttributes="Bold" VerticalTextAlignment="Center" />
                 </Grid>
             </VerticalStackLayout>
         </Frame>
@@ -151,6 +188,70 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+        <!-- Post-Patch Verification Results -->
+        <Frame BorderColor="#DADDE2" BackgroundColor="#F0FDF4" Padding="10">
+            <Frame.Triggers>
+                <DataTrigger TargetType="Frame" Binding="{Binding VerificationSummary}" Value="">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+            </Frame.Triggers>
+            <VerticalStackLayout Spacing="10">
+                <Label Text="✓ Post-Patch Verification Results" FontAttributes="Bold" FontSize="14" TextColor="#166534" />
+                <Label Text="{Binding VerificationSummary}" FontSize="12" TextColor="#374151" LineBreakMode="WordWrap" />
+                
+                <Label Text="Verification Details:" FontAttributes="Bold" FontSize="12" />
+                <ScrollView Orientation="Horizontal">
+                    <Grid RowDefinitions="Auto,*" ColumnSpacing="0">
+                        <Grid Grid.Row="0" ColumnDefinitions="200,140,140,140,60,300" Padding="6" BackgroundColor="#E5E7EB">
+                            <Label Grid.Column="0" Text="User" FontAttributes="Bold" />
+                            <Label Grid.Column="1" Text="Expected" FontAttributes="Bold" />
+                            <Label Grid.Column="2" Text="Actual" FontAttributes="Bold" />
+                            <Label Grid.Column="3" Text="User ID" FontAttributes="Bold" />
+                            <Label Grid.Column="4" Text="Status" FontAttributes="Bold" />
+                            <Label Grid.Column="5" Text="Notes" FontAttributes="Bold" />
+                        </Grid>
+
+                        <CollectionView Grid.Row="1" ItemsSource="{Binding VerificationItems}" HeightRequest="200">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="patch:VerificationItem">
+                                    <Grid ColumnDefinitions="200,140,140,140,60,300" Padding="6">
+                                        <Label Grid.Column="0" Text="{Binding UserDisplay}" />
+                                        <Label Grid.Column="1" Text="{Binding ExpectedExtension}" />
+                                        <Label Grid.Column="2" Text="{Binding ActualExtension}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Mismatch">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                    <Setter Property="FontAttributes" Value="Bold" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Confirmed">
+                                                    <Setter Property="TextColor" Value="#16A34A" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label Grid.Column="3" Text="{Binding UserId}" FontSize="12" TextColor="#6B7280" />
+                                        <Label Grid.Column="4" Text="{Binding Status}" FontSize="11">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Confirmed">
+                                                    <Setter Property="TextColor" Value="#16A34A" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Mismatch">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Status}" Value="Error">
+                                                    <Setter Property="TextColor" Value="#DC2626" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label Grid.Column="5" Text="{Binding ErrorMessage}" FontSize="11" TextColor="#6B7280" LineBreakMode="TailTruncation" />
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Grid>
+                </ScrollView>
+            </VerticalStackLayout>
+        </Frame>
 
     </VerticalStackLayout>
 </ContentPage>

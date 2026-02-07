@@ -45,6 +45,8 @@ public sealed partial class PatchPlanViewModel : ObservableObject
         IncludeDuplicateUser = Preferences.Get(nameof(IncludeDuplicateUser), true);
         IncludeDiscrepancy = Preferences.Get(nameof(IncludeDiscrepancy), true);
         IncludeReassert = Preferences.Get(nameof(IncludeReassert), false);
+        
+        EnablePostPatchVerification = Preferences.Get(nameof(EnablePostPatchVerification), true);
     }
 
     private bool _whatIf = true;
@@ -209,6 +211,27 @@ public sealed partial class PatchPlanViewModel : ObservableObject
     public ObservableCollection<PatchUpdatedRow> Updated { get; } = new();
     public ObservableCollection<PatchSkippedRow> Skipped { get; } = new();
     public ObservableCollection<PatchFailedRow> Failed { get; } = new();
+    public ObservableCollection<VerificationItem> VerificationItems { get; } = new();
+
+    private bool _enablePostPatchVerification = true;
+    public bool EnablePostPatchVerification
+    {
+        get => _enablePostPatchVerification;
+        set
+        {
+            if (SetProperty(ref _enablePostPatchVerification, value))
+            {
+                Preferences.Set(nameof(EnablePostPatchVerification), value);
+            }
+        }
+    }
+
+    private string _verificationSummary = "";
+    public string VerificationSummary
+    {
+        get => _verificationSummary;
+        set => SetProperty(ref _verificationSummary, value ?? "");
+    }
 
     [RelayCommand(CanExecute = nameof(CanGeneratePlan))]
     private async Task GeneratePlanAsync()
@@ -280,9 +303,25 @@ public sealed partial class PatchPlanViewModel : ObservableObject
         // Double verification when not in WhatIf mode
         if (!WhatIf)
         {
+            // Build detailed summary for confirmation
+            var categoryBreakdown = PlanItems
+                .GroupBy(i => i.Category)
+                .Select(g => $"  • {g.Key}: {g.Count()} item(s)")
+                .ToList();
+            
+            var breakdownText = string.Join("\n", categoryBreakdown);
+            
             var firstConfirm = await _dialogs.ConfirmAsync(
-                "⚠️ First Confirmation",
-                $"You are about to apply REAL changes to user extensions.\n\n{PlanSummaryText}\n\nAre you absolutely sure?",
+                "⚠️ First Confirmation - Review Changes",
+                $"You are about to apply REAL changes to user extensions.\n\n" +
+                $"Changes by Category:\n{breakdownText}\n\n" +
+                $"Total: {PlanItems.Count} user(s) will be modified\n\n" +
+                $"These changes will:\n" +
+                $"  • Update user profile extension assignments\n" +
+                $"  • Increment user version numbers\n" +
+                $"  • Be logged to disk for audit trail\n\n" +
+                $"{(EnablePostPatchVerification ? "✓ Post-patch verification is ENABLED\n\n" : "⚠️ Post-patch verification is DISABLED\n\n")}" +
+                $"Are you absolutely sure you want to proceed?",
                 accept: "YES, CONTINUE",
                 cancel: "Cancel");
             
@@ -292,11 +331,23 @@ public sealed partial class PatchPlanViewModel : ObservableObject
                 return;
             }
 
-            // Second confirmation
-            var itemsToProcess = PlanItems.Count; // This is the filtered count based on category selection
+            // Second confirmation with impact details
+            var itemsToProcess = PlanItems.Count;
+            var sampleChanges = PlanItems.Take(3).Select(i => 
+                $"  • {i.User}: {i.CurrentExtension ?? "(cleared)"} → {i.RecommendedExtension ?? "(cleared)"}").ToList();
+            var sampleText = string.Join("\n", sampleChanges);
+            if (itemsToProcess > 3)
+            {
+                sampleText += $"\n  ... and {itemsToProcess - 3} more";
+            }
+            
             var secondConfirm = await _dialogs.ConfirmAsync(
-                "⚠️⚠️ FINAL Confirmation",
-                $"This is your LAST CHANCE to cancel.\n\nThis will modify {itemsToProcess} user extension assignment{(itemsToProcess != 1 ? "s" : "")}.\n\nThis action CANNOT be undone automatically.\n\nProceed with REAL changes?",
+                "⚠️⚠️ FINAL Confirmation - Last Chance",
+                $"This is your LAST CHANCE to cancel.\n\n" +
+                $"Sample of changes that will be applied:\n{sampleText}\n\n" +
+                $"Total: {itemsToProcess} user extension assignment{(itemsToProcess != 1 ? "s" : "")} will be modified.\n\n" +
+                $"⚠️ This action CANNOT be undone automatically.\n\n" +
+                $"Proceed with REAL changes?",
                 accept: "PATCH NOW",
                 cancel: "Cancel");
             
@@ -341,6 +392,59 @@ public sealed partial class PatchPlanViewModel : ObservableObject
             foreach (var r in result.Updated) { Updated.Add(r); }
             foreach (var r in result.Skipped) { Skipped.Add(r); }
             foreach (var r in result.Failed) { Failed.Add(r); }
+
+            // Post-patch verification - only run if REAL patches were applied and verification is enabled
+            if (!WhatIf && EnablePostPatchVerification && result.Updated.Count > 0)
+            {
+                StatusText = "Running post-patch verification…";
+                VerificationItems.Clear();
+                
+                try
+                {
+                    var verificationResult = await _audit.VerifyPatchResultsAsync(
+                        _store.Context, 
+                        result.Updated, 
+                        progress, 
+                        _cts.Token);
+                    
+                    foreach (var item in verificationResult.Items)
+                    {
+                        VerificationItems.Add(item);
+                    }
+                    
+                    VerificationSummary = 
+                        $"✓ Verified {verificationResult.TotalVerified} patches: " +
+                        $"{verificationResult.Confirmed} confirmed, " +
+                        $"{verificationResult.Mismatched} mismatched, " +
+                        $"{verificationResult.UserNotFound} users not found";
+                    
+                    if (verificationResult.Mismatched > 0)
+                    {
+                        StatusText = $"⚠️ Patch complete with {verificationResult.Mismatched} verification mismatch(es). See details below.";
+                    }
+                    else
+                    {
+                        StatusText = $"✓ Patch complete. All {verificationResult.Confirmed} changes verified successfully.";
+                    }
+                }
+                catch (Exception vEx)
+                {
+                    VerificationSummary = $"Verification failed: {vEx.Message}";
+                    StatusText = "Patch complete, but verification encountered errors.";
+                }
+            }
+            else if (WhatIf)
+            {
+                StatusText = "WhatIf complete (no real changes made).";
+                VerificationSummary = "";
+                VerificationItems.Clear();
+            }
+            else
+            {
+                StatusText = "Patch complete.";
+                VerificationSummary = EnablePostPatchVerification ? "No patches applied to verify." : "Post-patch verification disabled.";
+                VerificationItems.Clear();
+            }
 
             var outDir = await _export.ExportPatchAsync(_store.Context, result, _audit.Api.Stats, CancellationToken.None);
             _store.LastOutputFolder = outDir;
